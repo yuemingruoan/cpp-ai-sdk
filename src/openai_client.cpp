@@ -431,6 +431,63 @@ BatchListResponse OpenAIClient::listBatches() {
     }
 }
 
+FineTuningJob OpenAIClient::createFineTuningJob(const FineTuningRequest& request) {
+    nlohmann::json json_body = request;
+    std::map<std::string, std::string> headers = {
+        {"Content-Type", "application/json"},
+        {"Authorization", "Bearer " + api_key_}
+    };
+
+    std::string response = http_client_->post(config_.base_url + "/fine_tuning/jobs", json_body.dump(), headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+FineTuningListResponse OpenAIClient::listFineTuningJobs() {
+    std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
+    std::string response = http_client_->get(config_.base_url + "/fine_tuning/jobs", headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+FineTuningJob OpenAIClient::retrieveFineTuningJob(const std::string& job_id) {
+    std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
+    std::string response = http_client_->get(config_.base_url + "/fine_tuning/jobs/" + job_id, headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+FineTuningJob OpenAIClient::cancelFineTuningJob(const std::string& job_id) {
+    std::map<std::string, std::string> headers = {
+        {"Content-Type", "application/json"},
+        {"Authorization", "Bearer " + api_key_}
+    };
+
+    std::string response = http_client_->post(config_.base_url + "/fine_tuning/jobs/" + job_id + "/cancel", "", headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
 AudioTranscriptionResponse OpenAIClient::createTranscription(const AudioTranscriptionRequest& request) {
     std::map<std::string, std::string> fields = {{"model", request.model}};
     if (request.language) fields["language"] = *request.language;

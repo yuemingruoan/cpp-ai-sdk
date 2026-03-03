@@ -226,6 +226,28 @@ struct BatchListResponse {
     std::vector<BatchObject> data;
 };
 
+// Fine-tuning API
+struct FineTuningRequest {
+    std::string model;
+    std::string training_file;
+    std::optional<std::string> validation_file;
+    std::optional<int> n_epochs;
+};
+
+struct FineTuningJob {
+    std::string id;
+    std::string object;
+    std::string model;
+    int64_t created_at;
+    std::string status;
+    std::string training_file;
+};
+
+struct FineTuningListResponse {
+    std::string object;
+    std::vector<FineTuningJob> data;
+};
+
 void to_json(nlohmann::json& j, const EmbeddingRequest& r);
 void from_json(const nlohmann::json& j, EmbeddingResponse& r);
 void from_json(const nlohmann::json& j, ModelsResponse& r);
@@ -240,5 +262,8 @@ void from_json(const nlohmann::json& j, FileListResponse& r);
 void to_json(nlohmann::json& j, const BatchRequest& r);
 void from_json(const nlohmann::json& j, BatchObject& r);
 void from_json(const nlohmann::json& j, BatchListResponse& r);
+void to_json(nlohmann::json& j, const FineTuningRequest& r);
+void from_json(const nlohmann::json& j, FineTuningJob& r);
+void from_json(const nlohmann::json& j, FineTuningListResponse& r);
 
 } // namespace ai_sdk

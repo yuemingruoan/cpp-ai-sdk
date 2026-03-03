@@ -88,6 +88,12 @@ public:
     BatchObject cancelBatch(const std::string& batch_id);
     BatchListResponse listBatches();
 
+    // Fine-tuning API
+    FineTuningJob createFineTuningJob(const FineTuningRequest& request);
+    FineTuningListResponse listFineTuningJobs();
+    FineTuningJob retrieveFineTuningJob(const std::string& job_id);
+    FineTuningJob cancelFineTuningJob(const std::string& job_id);
+
 private:
     std::string callAPI(const std::string& model, const std::vector<Message>& messages,
                         std::optional<float> temperature = std::nullopt);

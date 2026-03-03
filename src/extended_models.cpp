@@ -170,4 +170,28 @@ void from_json(const nlohmann::json& j, BatchListResponse& r) {
     }
 }
 
+void to_json(nlohmann::json& j, const FineTuningRequest& r) {
+    j = nlohmann::json{{"model", r.model}, {"training_file", r.training_file}};
+    if (r.validation_file) j["validation_file"] = *r.validation_file;
+    if (r.n_epochs) j["hyperparameters"]["n_epochs"] = *r.n_epochs;
+}
+
+void from_json(const nlohmann::json& j, FineTuningJob& r) {
+    j.at("id").get_to(r.id);
+    j.at("object").get_to(r.object);
+    j.at("model").get_to(r.model);
+    j.at("created_at").get_to(r.created_at);
+    j.at("status").get_to(r.status);
+    j.at("training_file").get_to(r.training_file);
+}
+
+void from_json(const nlohmann::json& j, FineTuningListResponse& r) {
+    j.at("object").get_to(r.object);
+    for (const auto& item : j.at("data")) {
+        FineTuningJob job;
+        from_json(item, job);
+        r.data.push_back(job);
+    }
+}
+
 } // namespace ai_sdk
