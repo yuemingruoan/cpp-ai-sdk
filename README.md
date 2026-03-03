@@ -41,6 +41,7 @@
 - 流式响应支持
 - 文件上传/下载
 - 二进制数据处理
+- OAuth 2.0认证（Google Gemini）
 - 简洁的API设计
 
 ## 依赖
@@ -100,11 +101,37 @@ int main() {
 
 ### Google Gemini示例
 
+#### API Key认证
 ```cpp
 #include "ai_sdk/google_client.hpp"
 
 int main() {
     ai_sdk::GoogleClient client("your-api-key");
+    std::string response = client.chat("Hello!");
+    std::cout << response << std::endl;
+    return 0;
+}
+```
+
+#### OAuth 2.0认证
+```cpp
+#include "ai_sdk/google_client.hpp"
+
+int main() {
+    // 方式1：使用refresh_token（推荐）
+    ai_sdk::OAuthConfig oauth_config;
+    oauth_config.client_id = "your-client-id";
+    oauth_config.client_secret = "your-client-secret";
+    oauth_config.refresh_token = "your-refresh-token";
+
+    ai_sdk::GoogleClient client(oauth_config);
+
+    // 方式2：直接使用access_token
+    ai_sdk::OAuthConfig oauth_config2;
+    oauth_config2.access_token = "your-access-token";
+
+    ai_sdk::GoogleClient client2(oauth_config2);
+
     std::string response = client.chat("Hello!");
     std::cout << response << std::endl;
     return 0;
@@ -159,6 +186,7 @@ client.chatStream("Tell me a story", [](const std::string& chunk) {
 
 ## 运行示例
 
+### API Key认证
 ```bash
 export OPENAI_API_KEY="your-key"
 export ANTHROPIC_API_KEY="your-key"
@@ -167,6 +195,19 @@ export GOOGLE_API_KEY="your-key"
 ./build/openai_example
 ./build/anthropic_example
 ./build/google_example
+```
+
+### OAuth认证（仅Google）
+```bash
+# 使用refresh_token
+export GOOGLE_CLIENT_ID="your-client-id"
+export GOOGLE_CLIENT_SECRET="your-client-secret"
+export GOOGLE_REFRESH_TOKEN="your-refresh-token"
+./build/google_oauth_example
+
+# 直接使用access_token
+export GOOGLE_ACCESS_TOKEN="your-access-token"
+./build/google_access_token_example
 ```
 
 ## 项目结构

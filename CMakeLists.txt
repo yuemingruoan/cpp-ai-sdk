@@ -21,6 +21,7 @@ add_library(ai_sdk
     code/cpp/websocket_client.cpp
     code/cpp/realtime_client.cpp
     code/cpp/google_client.cpp
+    code/cpp/oauth_manager.cpp
 )
 
 target_include_directories(ai_sdk PUBLIC
@@ -41,3 +42,9 @@ target_link_libraries(anthropic_example PRIVATE ai_sdk)
 
 add_executable(google_example examples/google_example.cpp)
 target_link_libraries(google_example PRIVATE ai_sdk)
+
+add_executable(google_oauth_example examples/google_oauth_example.cpp)
+target_link_libraries(google_oauth_example PRIVATE ai_sdk)
+
+add_executable(google_access_token_example examples/google_access_token_example.cpp)
+target_link_libraries(google_access_token_example PRIVATE ai_sdk)

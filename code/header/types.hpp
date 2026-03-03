@@ -35,4 +35,18 @@ public:
 
 using StreamCallback = std::function<void(const std::string& chunk)>;
 
+struct OAuthConfig {
+    std::string client_id;
+    std::string client_secret;
+    std::string refresh_token;
+    std::string access_token;
+    int64_t expires_at = 0;
+    std::string token_uri = "https://oauth2.googleapis.com/token";
+};
+
+struct OAuthToken {
+    std::string access_token;
+    int64_t expires_at = 0;
+};
+
 } // namespace ai_sdk

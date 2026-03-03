@@ -14,6 +14,7 @@ namespace ai_sdk {
 class HttpClient;
 class ContextManager;
 class WebSocketClient;
+class OAuthManager;
 
 struct GoogleClientConfig {
     bool auto_context = true;
@@ -28,6 +29,8 @@ public:
     explicit GoogleClient(const std::string& api_key);
     GoogleClient(const std::string& api_key, bool auto_context);
     GoogleClient(const std::string& api_key, const GoogleClientConfig& config);
+    explicit GoogleClient(const OAuthConfig& oauth_config);
+    GoogleClient(const OAuthConfig& oauth_config, const GoogleClientConfig& config);
     ~GoogleClient();
 
     // Chat API (简化接口)
@@ -77,13 +80,16 @@ private:
     std::string callAPI(const std::string& model, const std::vector<Message>& messages, std::optional<float> temperature = std::nullopt);
     std::vector<GeminiContent> messagesToContents(const std::vector<Message>& messages);
     std::vector<Message> contentsToMessages(const std::vector<GeminiContent>& contents);
+    std::map<std::string, std::string> getAuthHeaders();
 
     std::unique_ptr<HttpClient> http_client_;
     std::unique_ptr<ContextManager> context_;
     std::unique_ptr<WebSocketClient> ws_client_;
+    std::unique_ptr<OAuthManager> oauth_manager_;
     StreamCallback bidi_callback_;
     GoogleClientConfig config_;
     std::string api_key_;
+    bool use_oauth_ = false;
 };
 
 } // namespace ai_sdk

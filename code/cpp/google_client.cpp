@@ -2,6 +2,7 @@
 #include "http_client.hpp"
 #include "context_manager.hpp"
 #include "websocket_client.hpp"
+#include "oauth_manager.hpp"
 #include <nlohmann/json.hpp>
 
 namespace ai_sdk {
@@ -24,7 +25,28 @@ GoogleClient::GoogleClient(const std::string& api_key, const GoogleClientConfig&
     }
 }
 
+GoogleClient::GoogleClient(const OAuthConfig& oauth_config)
+    : GoogleClient(oauth_config, GoogleClientConfig{}) {}
+
+GoogleClient::GoogleClient(const OAuthConfig& oauth_config, const GoogleClientConfig& config)
+    : config_(config), http_client_(std::make_unique<HttpClient>()),
+      oauth_manager_(std::make_unique<OAuthManager>(oauth_config)), use_oauth_(true) {
+    if (config_.auto_context) {
+        context_ = std::make_unique<ContextManager>(config_.max_context_tokens);
+    }
+}
+
 GoogleClient::~GoogleClient() = default;
+
+std::map<std::string, std::string> GoogleClient::getAuthHeaders() {
+    std::map<std::string, std::string> headers = {{"Content-Type", "application/json"}};
+    if (use_oauth_) {
+        headers["Authorization"] = "Bearer " + oauth_manager_->getAccessToken();
+    } else {
+        headers["x-goog-api-key"] = api_key_;
+    }
+    return headers;
+}
 
 std::vector<GeminiContent> GoogleClient::messagesToContents(const std::vector<Message>& messages) {
     std::vector<GeminiContent> contents;
@@ -77,10 +99,7 @@ std::string GoogleClient::callAPI(const std::string& model, const std::vector<Me
     }
 
     nlohmann::json json_body = request;
-    std::map<std::string, std::string> headers = {
-        {"Content-Type", "application/json"},
-        {"x-goog-api-key", api_key_}
-    };
+    auto headers = getAuthHeaders();
 
     std::string url = config_.base_url + "/models/" + model + ":generateContent";
     std::string response = http_client_->post(url, json_body.dump(), headers);
@@ -134,10 +153,7 @@ GeminiResponse GoogleClient::generateContent(const std::string& model, const std
     request.contents = contents;
 
     nlohmann::json json_body = request;
-    std::map<std::string, std::string> headers = {
-        {"Content-Type", "application/json"},
-        {"x-goog-api-key", api_key_}
-    };
+    auto headers = getAuthHeaders();
 
     std::string url = config_.base_url + "/models/" + model + ":generateContent";
     std::string response = http_client_->post(url, json_body.dump(), headers);
@@ -152,10 +168,7 @@ GeminiResponse GoogleClient::generateContent(const std::string& model, const std
     request.generation_config = config;
 
     nlohmann::json json_body = request;
-    std::map<std::string, std::string> headers = {
-        {"Content-Type", "application/json"},
-        {"x-goog-api-key", api_key_}
-    };
+    auto headers = getAuthHeaders();
 
     std::string url = config_.base_url + "/models/" + model + ":generateContent";
     std::string response = http_client_->post(url, json_body.dump(), headers);
@@ -184,10 +197,7 @@ void GoogleClient::streamGenerateContent(const std::string& model, const std::ve
     request.contents = contents;
 
     nlohmann::json json_body = request;
-    std::map<std::string, std::string> headers = {
-        {"Content-Type", "application/json"},
-        {"x-goog-api-key", api_key_}
-    };
+    auto headers = getAuthHeaders();
 
     std::string url = config_.base_url + "/models/" + model + ":streamGenerateContent?alt=sse";
 
@@ -202,10 +212,7 @@ GeminiEmbedding GoogleClient::embedContent(const std::string& model, const std::
         {"content", {{"parts", {{{"text", text}}}}}}
     };
 
-    std::map<std::string, std::string> headers = {
-        {"Content-Type", "application/json"},
-        {"x-goog-api-key", api_key_}
-    };
+    auto headers = getAuthHeaders();
 
     std::string url = config_.base_url + "/models/" + model + ":embedContent";
     std::string response = http_client_->post(url, json_body.dump(), headers);
@@ -224,10 +231,7 @@ std::vector<GeminiEmbedding> GoogleClient::batchEmbedContents(const std::string&
     }
 
     nlohmann::json json_body = {{"requests", requests}};
-    std::map<std::string, std::string> headers = {
-        {"Content-Type", "application/json"},
-        {"x-goog-api-key", api_key_}
-    };
+    auto headers = getAuthHeaders();
 
     std::string url = config_.base_url + "/models/" + model + ":batchEmbedContents";
     std::string response = http_client_->post(url, json_body.dump(), headers);
@@ -246,10 +250,7 @@ int GoogleClient::countTokens(const std::string& model, const std::string& text)
     json_body["contents"][0]["parts"] = nlohmann::json::array();
     json_body["contents"][0]["parts"][0]["text"] = text;
 
-    std::map<std::string, std::string> headers = {
-        {"Content-Type", "application/json"},
-        {"x-goog-api-key", api_key_}
-    };
+    auto headers = getAuthHeaders();
 
     std::string url = config_.base_url + "/models/" + model + ":countTokens";
     std::string response = http_client_->post(url, json_body.dump(), headers);
@@ -261,10 +262,7 @@ int GoogleClient::countTokens(const std::string& model, const std::string& text)
 int GoogleClient::countTokens(const std::string& model, const std::vector<GeminiContent>& contents) {
     nlohmann::json json_body = {{"contents", contents}};
 
-    std::map<std::string, std::string> headers = {
-        {"Content-Type", "application/json"},
-        {"x-goog-api-key", api_key_}
-    };
+    auto headers = getAuthHeaders();
 
     std::string url = config_.base_url + "/models/" + model + ":countTokens";
     std::string response = http_client_->post(url, json_body.dump(), headers);
@@ -280,10 +278,7 @@ std::string GoogleClient::batchGenerateContent(const std::string& model, const s
     }
 
     nlohmann::json json_body = {{"requests", requests}};
-    std::map<std::string, std::string> headers = {
-        {"Content-Type", "application/json"},
-        {"x-goog-api-key", api_key_}
-    };
+    auto headers = getAuthHeaders();
 
     std::string url = config_.base_url + "/models/" + model + ":batchGenerateContent";
     return http_client_->post(url, json_body.dump(), headers);
@@ -292,7 +287,12 @@ std::string GoogleClient::batchGenerateContent(const std::string& model, const s
 GeminiFile GoogleClient::uploadFile(const std::string& file_path, const std::string& mime_type) {
     std::map<std::string, std::string> fields = {{"mimeType", mime_type}};
     std::map<std::string, std::string> files = {{"file", file_path}};
-    std::map<std::string, std::string> headers = {{"x-goog-api-key", api_key_}};
+    std::map<std::string, std::string> headers;
+    if (use_oauth_) {
+        headers["Authorization"] = "Bearer " + oauth_manager_->getAccessToken();
+    } else {
+        headers["x-goog-api-key"] = api_key_;
+    }
 
     std::string url = config_.base_url + "/files";
     std::string response = http_client_->postMultipart(url, fields, files, headers);
@@ -302,7 +302,12 @@ GeminiFile GoogleClient::uploadFile(const std::string& file_path, const std::str
 }
 
 GeminiFile GoogleClient::getFile(const std::string& file_name) {
-    std::map<std::string, std::string> headers = {{"x-goog-api-key", api_key_}};
+    std::map<std::string, std::string> headers;
+    if (use_oauth_) {
+        headers["Authorization"] = "Bearer " + oauth_manager_->getAccessToken();
+    } else {
+        headers["x-goog-api-key"] = api_key_;
+    }
     std::string url = config_.base_url + "/" + file_name;
     std::string response = http_client_->get(url, headers);
 
@@ -311,13 +316,23 @@ GeminiFile GoogleClient::getFile(const std::string& file_name) {
 }
 
 void GoogleClient::deleteFile(const std::string& file_name) {
-    std::map<std::string, std::string> headers = {{"x-goog-api-key", api_key_}};
+    std::map<std::string, std::string> headers;
+    if (use_oauth_) {
+        headers["Authorization"] = "Bearer " + oauth_manager_->getAccessToken();
+    } else {
+        headers["x-goog-api-key"] = api_key_;
+    }
     std::string url = config_.base_url + "/" + file_name;
     http_client_->deleteRequest(url, headers);
 }
 
 std::vector<GeminiFile> GoogleClient::listFiles() {
-    std::map<std::string, std::string> headers = {{"x-goog-api-key", api_key_}};
+    std::map<std::string, std::string> headers;
+    if (use_oauth_) {
+        headers["Authorization"] = "Bearer " + oauth_manager_->getAccessToken();
+    } else {
+        headers["x-goog-api-key"] = api_key_;
+    }
     std::string url = config_.base_url + "/files";
     std::string response = http_client_->get(url, headers);
 

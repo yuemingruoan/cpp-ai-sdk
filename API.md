@@ -462,11 +462,61 @@ std::string results = client.retrieveMessageBatchResults(batch_id);
 
 ### 构造函数
 
+#### API Key认证
+
 ```cpp
 #include "google_client.hpp"
 
 ai_sdk::GoogleClient client("your-api-key");
 ```
+
+#### OAuth 2.0认证
+
+**使用refresh_token（推荐）**
+```cpp
+#include "google_client.hpp"
+
+ai_sdk::OAuthConfig oauth_config;
+oauth_config.client_id = "your-client-id";
+oauth_config.client_secret = "your-client-secret";
+oauth_config.refresh_token = "your-refresh-token";
+
+ai_sdk::GoogleClient client(oauth_config);
+```
+
+**直接使用access_token**
+```cpp
+ai_sdk::OAuthConfig oauth_config;
+oauth_config.access_token = "your-access-token";
+oauth_config.expires_at = 1234567890;  // Unix timestamp
+
+ai_sdk::GoogleClient client(oauth_config);
+```
+
+**使用access_token + refresh_token**
+```cpp
+ai_sdk::OAuthConfig oauth_config;
+oauth_config.client_id = "your-client-id";
+oauth_config.client_secret = "your-client-secret";
+oauth_config.access_token = "your-access-token";
+oauth_config.refresh_token = "your-refresh-token";
+oauth_config.expires_at = 1234567890;
+
+ai_sdk::GoogleClient client(oauth_config);
+// SDK会使用access_token，过期后自动用refresh_token刷新
+```
+
+**带自定义配置**
+```cpp
+ai_sdk::GoogleClientConfig config;
+config.auto_context = true;
+ai_sdk::GoogleClient client(oauth_config, config);
+```
+
+**注意**：
+- 如果只提供access_token，token过期后无法自动刷新
+- 如果同时提供access_token和refresh_token，SDK会在token过期时自动刷新
+- expires_at为Unix时间戳（秒）
 
 ### Chat API
 
