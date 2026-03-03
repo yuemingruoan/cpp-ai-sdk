@@ -194,4 +194,45 @@ void from_json(const nlohmann::json& j, FineTuningListResponse& r) {
     }
 }
 
+void to_json(nlohmann::json& j, const AssistantRequest& r) {
+    j = nlohmann::json{{"model", r.model}};
+    if (r.name) j["name"] = *r.name;
+    if (r.instructions) j["instructions"] = *r.instructions;
+}
+
+void from_json(const nlohmann::json& j, Assistant& r) {
+    j.at("id").get_to(r.id);
+    j.at("object").get_to(r.object);
+    j.at("created_at").get_to(r.created_at);
+    j.at("model").get_to(r.model);
+    if (j.contains("name") && !j["name"].is_null()) r.name = j["name"].get<std::string>();
+    if (j.contains("instructions") && !j["instructions"].is_null()) r.instructions = j["instructions"].get<std::string>();
+}
+
+void from_json(const nlohmann::json& j, Thread& r) {
+    j.at("id").get_to(r.id);
+    j.at("object").get_to(r.object);
+    j.at("created_at").get_to(r.created_at);
+}
+
+void from_json(const nlohmann::json& j, ThreadMessage& r) {
+    j.at("id").get_to(r.id);
+    j.at("object").get_to(r.object);
+    j.at("created_at").get_to(r.created_at);
+    j.at("thread_id").get_to(r.thread_id);
+    j.at("role").get_to(r.role);
+    if (j.contains("content") && j["content"].is_array() && !j["content"].empty()) {
+        r.content = j["content"][0]["text"]["value"].get<std::string>();
+    }
+}
+
+void from_json(const nlohmann::json& j, Run& r) {
+    j.at("id").get_to(r.id);
+    j.at("object").get_to(r.object);
+    j.at("created_at").get_to(r.created_at);
+    j.at("thread_id").get_to(r.thread_id);
+    j.at("assistant_id").get_to(r.assistant_id);
+    j.at("status").get_to(r.status);
+}
+
 } // namespace ai_sdk

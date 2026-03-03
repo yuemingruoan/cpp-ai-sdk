@@ -248,6 +248,46 @@ struct FineTuningListResponse {
     std::vector<FineTuningJob> data;
 };
 
+// Assistants API
+struct AssistantRequest {
+    std::string model;
+    std::optional<std::string> name;
+    std::optional<std::string> instructions;
+};
+
+struct Assistant {
+    std::string id;
+    std::string object;
+    int64_t created_at;
+    std::string model;
+    std::optional<std::string> name;
+    std::optional<std::string> instructions;
+};
+
+struct Thread {
+    std::string id;
+    std::string object;
+    int64_t created_at;
+};
+
+struct ThreadMessage {
+    std::string id;
+    std::string object;
+    int64_t created_at;
+    std::string thread_id;
+    std::string role;
+    std::string content;
+};
+
+struct Run {
+    std::string id;
+    std::string object;
+    int64_t created_at;
+    std::string thread_id;
+    std::string assistant_id;
+    std::string status;
+};
+
 void to_json(nlohmann::json& j, const EmbeddingRequest& r);
 void from_json(const nlohmann::json& j, EmbeddingResponse& r);
 void from_json(const nlohmann::json& j, ModelsResponse& r);
@@ -265,5 +305,10 @@ void from_json(const nlohmann::json& j, BatchListResponse& r);
 void to_json(nlohmann::json& j, const FineTuningRequest& r);
 void from_json(const nlohmann::json& j, FineTuningJob& r);
 void from_json(const nlohmann::json& j, FineTuningListResponse& r);
+void to_json(nlohmann::json& j, const AssistantRequest& r);
+void from_json(const nlohmann::json& j, Assistant& r);
+void from_json(const nlohmann::json& j, Thread& r);
+void from_json(const nlohmann::json& j, ThreadMessage& r);
+void from_json(const nlohmann::json& j, Run& r);
 
 } // namespace ai_sdk

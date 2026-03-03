@@ -94,6 +94,15 @@ public:
     FineTuningJob retrieveFineTuningJob(const std::string& job_id);
     FineTuningJob cancelFineTuningJob(const std::string& job_id);
 
+    // Assistants API
+    Assistant createAssistant(const AssistantRequest& request);
+    Assistant retrieveAssistant(const std::string& assistant_id);
+    void deleteAssistant(const std::string& assistant_id);
+    Thread createThread();
+    ThreadMessage createMessage(const std::string& thread_id, const std::string& role, const std::string& content);
+    Run createRun(const std::string& thread_id, const std::string& assistant_id);
+    Run retrieveRun(const std::string& thread_id, const std::string& run_id);
+
 private:
     std::string callAPI(const std::string& model, const std::vector<Message>& messages,
                         std::optional<float> temperature = std::nullopt);

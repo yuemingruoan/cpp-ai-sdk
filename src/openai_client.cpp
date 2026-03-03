@@ -488,6 +488,115 @@ FineTuningJob OpenAIClient::cancelFineTuningJob(const std::string& job_id) {
     }
 }
 
+Assistant OpenAIClient::createAssistant(const AssistantRequest& request) {
+    nlohmann::json json_body = request;
+    std::map<std::string, std::string> headers = {
+        {"Content-Type", "application/json"},
+        {"Authorization", "Bearer " + api_key_},
+        {"OpenAI-Beta", "assistants=v2"}
+    };
+
+    std::string response = http_client_->post(config_.base_url + "/assistants", json_body.dump(), headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+Assistant OpenAIClient::retrieveAssistant(const std::string& assistant_id) {
+    std::map<std::string, std::string> headers = {
+        {"Authorization", "Bearer " + api_key_},
+        {"OpenAI-Beta", "assistants=v2"}
+    };
+    std::string response = http_client_->get(config_.base_url + "/assistants/" + assistant_id, headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+void OpenAIClient::deleteAssistant(const std::string& assistant_id) {
+    std::map<std::string, std::string> headers = {
+        {"Authorization", "Bearer " + api_key_},
+        {"OpenAI-Beta", "assistants=v2"}
+    };
+    http_client_->deleteRequest(config_.base_url + "/assistants/" + assistant_id, headers);
+}
+
+Thread OpenAIClient::createThread() {
+    std::map<std::string, std::string> headers = {
+        {"Content-Type", "application/json"},
+        {"Authorization", "Bearer " + api_key_},
+        {"OpenAI-Beta", "assistants=v2"}
+    };
+
+    std::string response = http_client_->post(config_.base_url + "/threads", "{}", headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+ThreadMessage OpenAIClient::createMessage(const std::string& thread_id, const std::string& role, const std::string& content) {
+    nlohmann::json json_body = {{"role", role}, {"content", content}};
+    std::map<std::string, std::string> headers = {
+        {"Content-Type", "application/json"},
+        {"Authorization", "Bearer " + api_key_},
+        {"OpenAI-Beta", "assistants=v2"}
+    };
+
+    std::string response = http_client_->post(config_.base_url + "/threads/" + thread_id + "/messages", json_body.dump(), headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+Run OpenAIClient::createRun(const std::string& thread_id, const std::string& assistant_id) {
+    nlohmann::json json_body = {{"assistant_id", assistant_id}};
+    std::map<std::string, std::string> headers = {
+        {"Content-Type", "application/json"},
+        {"Authorization", "Bearer " + api_key_},
+        {"OpenAI-Beta", "assistants=v2"}
+    };
+
+    std::string response = http_client_->post(config_.base_url + "/threads/" + thread_id + "/runs", json_body.dump(), headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+Run OpenAIClient::retrieveRun(const std::string& thread_id, const std::string& run_id) {
+    std::map<std::string, std::string> headers = {
+        {"Authorization", "Bearer " + api_key_},
+        {"OpenAI-Beta", "assistants=v2"}
+    };
+    std::string response = http_client_->get(config_.base_url + "/threads/" + thread_id + "/runs/" + run_id, headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
 AudioTranscriptionResponse OpenAIClient::createTranscription(const AudioTranscriptionRequest& request) {
     std::map<std::string, std::string> fields = {{"model", request.model}};
     if (request.language) fields["language"] = *request.language;
