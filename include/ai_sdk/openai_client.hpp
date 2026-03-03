@@ -103,6 +103,11 @@ public:
     Run createRun(const std::string& thread_id, const std::string& assistant_id);
     Run retrieveRun(const std::string& thread_id, const std::string& run_id);
 
+    // Videos API
+    VideoObject createVideo(const VideoGenerationRequest& request);
+    VideoObject getVideoStatus(const std::string& video_id);
+    VideoListResponse listVideos();
+
 private:
     std::string callAPI(const std::string& model, const std::vector<Message>& messages,
                         std::optional<float> temperature = std::nullopt);

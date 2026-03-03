@@ -235,4 +235,21 @@ void from_json(const nlohmann::json& j, Run& r) {
     j.at("status").get_to(r.status);
 }
 
+void to_json(nlohmann::json& j, const VideoGenerationRequest& r) {
+    j["prompt"] = r.prompt;
+    if (r.resolution) j["resolution"] = *r.resolution;
+    if (r.duration) j["duration"] = *r.duration;
+}
+
+void from_json(const nlohmann::json& j, VideoObject& r) {
+    j.at("id").get_to(r.id);
+    j.at("status").get_to(r.status);
+    if (j.contains("url") && !j["url"].is_null()) r.url = j["url"].get<std::string>();
+    if (j.contains("created_at")) r.created_at = j["created_at"].get<int64_t>();
+}
+
+void from_json(const nlohmann::json& j, VideoListResponse& r) {
+    j.at("data").get_to(r.data);
+}
+
 } // namespace ai_sdk

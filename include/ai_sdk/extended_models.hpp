@@ -288,6 +288,24 @@ struct Run {
     std::string status;
 };
 
+// Videos
+struct VideoGenerationRequest {
+    std::string prompt;
+    std::optional<std::string> resolution;
+    std::optional<int> duration;
+};
+
+struct VideoObject {
+    std::string id;
+    std::string status;
+    std::optional<std::string> url;
+    std::optional<int64_t> created_at;
+};
+
+struct VideoListResponse {
+    std::vector<VideoObject> data;
+};
+
 void to_json(nlohmann::json& j, const EmbeddingRequest& r);
 void from_json(const nlohmann::json& j, EmbeddingResponse& r);
 void from_json(const nlohmann::json& j, ModelsResponse& r);
@@ -310,5 +328,8 @@ void from_json(const nlohmann::json& j, Assistant& r);
 void from_json(const nlohmann::json& j, Thread& r);
 void from_json(const nlohmann::json& j, ThreadMessage& r);
 void from_json(const nlohmann::json& j, Run& r);
+void to_json(nlohmann::json& j, const VideoGenerationRequest& r);
+void from_json(const nlohmann::json& j, VideoObject& r);
+void from_json(const nlohmann::json& j, VideoListResponse& r);
 
 } // namespace ai_sdk

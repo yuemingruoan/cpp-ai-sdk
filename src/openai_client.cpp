@@ -678,4 +678,45 @@ std::vector<uint8_t> OpenAIClient::createSpeech(const std::string& text, const s
     return createSpeech(request);
 }
 
+VideoObject OpenAIClient::createVideo(const VideoGenerationRequest& request) {
+    nlohmann::json json_body = request;
+    std::map<std::string, std::string> headers = {
+        {"Content-Type", "application/json"},
+        {"Authorization", "Bearer " + api_key_}
+    };
+
+    std::string response = http_client_->post(config_.base_url + "/videos/generations", json_body.dump(), headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+VideoObject OpenAIClient::getVideoStatus(const std::string& video_id) {
+    std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
+    std::string response = http_client_->get(config_.base_url + "/videos/" + video_id, headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+VideoListResponse OpenAIClient::listVideos() {
+    std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
+    std::string response = http_client_->get(config_.base_url + "/videos", headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
 } // namespace ai_sdk
