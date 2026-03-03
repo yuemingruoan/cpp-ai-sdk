@@ -1,10 +1,10 @@
 # C++ AI SDK
 
-一个统一的C++ SDK，支持OpenAI和Anthropic的API调用。
+一个统一的C++ SDK，支持OpenAI、Anthropic和Google Gemini的API调用。
 
 ## 特性
 
-### OpenAI API支持
+### OpenAI API支持（27个端点）
 - Chat Completions - 对话生成
 - Embeddings - 文本向量化
 - Models - 模型管理
@@ -16,10 +16,24 @@
 - Batch - 批处理任务
 - Fine-tuning - 模型微调
 - Assistants - 助手系统
+- Videos (Sora) - 视频生成
+- Realtime API - 实时语音对话（WebSocket）
+- Response API - WebSocket模式
 
-### Anthropic API支持
+### Anthropic API支持（2个端点）
 - Messages - Claude对话
 - Message Batches - 批量消息
+
+### Google Gemini API支持（9类API）
+- Generate Content - 标准文本生成
+- Stream Generate Content - SSE流式生成
+- Embed Content - 文本嵌入（单个/批量）
+- Count Tokens - Token计数
+- Batch Generate Content - 批量生成
+- File API - 文件上传/获取/删除/列表
+- Bidirectional Streaming - WebSocket双向流
+- Chat API - 简化接口
+- Context Management - 自动上下文管理
 
 ### 核心功能
 - 自动上下文管理（多轮对话）
@@ -33,18 +47,19 @@
 
 - C++17或更高版本
 - libcurl
-- nlohmann/json
+- nlohmann/json（已包含在项目中）
+- IXWebSocket（已包含在项目中）
 
 ## 安装依赖
 
 ### macOS
 ```bash
-brew install curl nlohmann-json
+brew install curl
 ```
 
 ### Ubuntu/Debian
 ```bash
-sudo apt-get install libcurl4-openssl-dev nlohmann-json3-dev
+sudo apt-get install libcurl4-openssl-dev
 ```
 
 ## 构建
@@ -77,6 +92,19 @@ int main() {
 
 int main() {
     ai_sdk::AnthropicClient client("your-api-key");
+    std::string response = client.chat("Hello!");
+    std::cout << response << std::endl;
+    return 0;
+}
+```
+
+### Google Gemini示例
+
+```cpp
+#include "ai_sdk/google_client.hpp"
+
+int main() {
+    ai_sdk::GoogleClient client("your-api-key");
     std::string response = client.chat("Hello!");
     std::cout << response << std::endl;
     return 0;
@@ -134,9 +162,24 @@ client.chatStream("Tell me a story", [](const std::string& chunk) {
 ```bash
 export OPENAI_API_KEY="your-key"
 export ANTHROPIC_API_KEY="your-key"
+export GOOGLE_API_KEY="your-key"
 
 ./build/openai_example
 ./build/anthropic_example
+./build/google_example
+```
+
+## 项目结构
+
+```
+cpp-ai-sdk/
+├── code/
+│   ├── header/ai_sdk/        # 头文件
+│   ├── cpp/                  # 源文件
+│   └── third_party/          # 第三方库
+├── examples/                 # 示例代码
+├── build/                    # 编译输出
+└── CMakeLists.txt
 ```
 
 ## 许可证
