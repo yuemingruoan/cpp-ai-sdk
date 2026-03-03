@@ -4,11 +4,29 @@
 
 ## 特性
 
-- 支持OpenAI Chat Completions API
-- 支持Anthropic Messages API
+### OpenAI API支持
+- Chat Completions - 对话生成
+- Embeddings - 文本向量化
+- Models - 模型管理
+- Moderations - 内容审核
+- Images (Generations/Edits/Variations) - 图像处理
+- Completions (legacy) - 传统文本补全
+- Audio (Transcriptions/Translations/Speech) - 音频处理
+- Files - 文件管理
+- Batch - 批处理任务
+- Fine-tuning - 模型微调
+- Assistants - 助手系统
+
+### Anthropic API支持
+- Messages - Claude对话
+- Message Batches - 批量消息
+
+### 核心功能
 - 自动上下文管理（多轮对话）
 - 异步调用支持
 - 流式响应支持
+- 文件上传/下载
+- 二进制数据处理
 - 简洁的API设计
 
 ## 依赖
