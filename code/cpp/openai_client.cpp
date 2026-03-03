@@ -1,8 +1,8 @@
-#include "ai_sdk/openai_client.hpp"
-#include "ai_sdk/http_client.hpp"
-#include "ai_sdk/context_manager.hpp"
-#include "ai_sdk/websocket_client.hpp"
-#include "ai_sdk/extended_models.hpp"
+#include "openai_client.hpp"
+#include "http_client.hpp"
+#include "context_manager.hpp"
+#include "websocket_client.hpp"
+#include "extended_models.hpp"
 #include <nlohmann/json.hpp>
 
 namespace ai_sdk {

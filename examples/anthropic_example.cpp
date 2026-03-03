@@ -1,4 +1,4 @@
-#include "ai_sdk/anthropic_client.hpp"
+#include "anthropic_client.hpp"
 #include <iostream>
 
 int main() {

@@ -1,4 +1,4 @@
-#include "ai_sdk/extended_models.hpp"
+#include "extended_models.hpp"
 
 namespace ai_sdk {
 

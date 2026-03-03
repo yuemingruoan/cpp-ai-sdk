@@ -1,4 +1,4 @@
-#include "ai_sdk/websocket_client.hpp"
+#include "websocket_client.hpp"
 #include <ixwebsocket/IXWebSocket.h>
 #include <ixwebsocket/IXNetSystem.h>
 

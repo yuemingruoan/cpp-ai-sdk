@@ -1,4 +1,4 @@
-#include "ai_sdk/realtime_client.hpp"
+#include "realtime_client.hpp"
 #include <nlohmann/json.hpp>
 
 namespace ai_sdk {

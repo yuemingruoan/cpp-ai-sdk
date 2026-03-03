@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ai_sdk/websocket_client.hpp"
+#include "websocket_client.hpp"
 #include <string>
 #include <functional>
 #include <memory>

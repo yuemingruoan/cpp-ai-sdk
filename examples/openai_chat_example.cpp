@@ -1,4 +1,4 @@
-#include "ai_sdk/openai_client.hpp"
+#include "openai_client.hpp"
 #include <iostream>
 
 int main() {

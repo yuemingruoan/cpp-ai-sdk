@@ -1,6 +1,6 @@
-#include "ai_sdk/anthropic_client.hpp"
-#include "ai_sdk/http_client.hpp"
-#include "ai_sdk/context_manager.hpp"
+#include "anthropic_client.hpp"
+#include "http_client.hpp"
+#include "context_manager.hpp"
 #include <nlohmann/json.hpp>
 
 namespace ai_sdk {

@@ -1,4 +1,4 @@
-#include "ai_sdk/context_manager.hpp"
+#include "context_manager.hpp"
 
 namespace ai_sdk {
 

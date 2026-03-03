@@ -1,5 +1,5 @@
-#include "ai_sdk/http_client.hpp"
-#include "ai_sdk/types.hpp"
+#include "http_client.hpp"
+#include "types.hpp"
 #include <curl/curl.h>
 #include <sstream>
 
