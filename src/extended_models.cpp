@@ -99,4 +99,29 @@ void from_json(const nlohmann::json& j, ModerationResponse& r) {
     }
 }
 
+void to_json(nlohmann::json& j, const CompletionRequest& r) {
+    j = nlohmann::json{{"model", r.model}, {"prompt", r.prompt}};
+    if (r.max_tokens) j["max_tokens"] = *r.max_tokens;
+    if (r.temperature) j["temperature"] = *r.temperature;
+}
+
+void from_json(const nlohmann::json& j, CompletionResponse& r) {
+    j.at("id").get_to(r.id);
+    j.at("object").get_to(r.object);
+    j.at("created").get_to(r.created);
+    j.at("model").get_to(r.model);
+
+    for (const auto& item : j.at("choices")) {
+        CompletionChoice choice;
+        item.at("text").get_to(choice.text);
+        item.at("index").get_to(choice.index);
+        item.at("finish_reason").get_to(choice.finish_reason);
+        r.choices.push_back(choice);
+    }
+
+    j.at("usage").at("prompt_tokens").get_to(r.usage.prompt_tokens);
+    j.at("usage").at("completion_tokens").get_to(r.usage.completion_tokens);
+    j.at("usage").at("total_tokens").get_to(r.usage.total_tokens);
+}
+
 } // namespace ai_sdk

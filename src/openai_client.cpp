@@ -261,4 +261,28 @@ ImageResponse OpenAIClient::createImage(const std::string& prompt) {
     return createImage(request);
 }
 
+CompletionResponse OpenAIClient::createCompletion(const CompletionRequest& request) {
+    nlohmann::json json_body = request;
+    std::map<std::string, std::string> headers = {
+        {"Content-Type", "application/json"},
+        {"Authorization", "Bearer " + api_key_}
+    };
+
+    std::string response = http_client_->post(config_.base_url + "/completions", json_body.dump(), headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+CompletionResponse OpenAIClient::createCompletion(const std::string& model, const std::string& prompt) {
+    CompletionRequest request;
+    request.model = model;
+    request.prompt = prompt;
+    return createCompletion(request);
+}
+
 } // namespace ai_sdk

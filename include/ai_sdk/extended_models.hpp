@@ -133,6 +133,33 @@ struct ModerationResponse {
     std::vector<ModerationResult> results;
 };
 
+// Completions (legacy)
+struct CompletionRequest {
+    std::string model;
+    std::string prompt;
+    std::optional<int> max_tokens;
+    std::optional<float> temperature;
+};
+
+struct CompletionChoice {
+    std::string text;
+    int index;
+    std::string finish_reason;
+};
+
+struct CompletionResponse {
+    std::string id;
+    std::string object;
+    int64_t created;
+    std::string model;
+    std::vector<CompletionChoice> choices;
+    struct {
+        int prompt_tokens;
+        int completion_tokens;
+        int total_tokens;
+    } usage;
+};
+
 void to_json(nlohmann::json& j, const EmbeddingRequest& r);
 void from_json(const nlohmann::json& j, EmbeddingResponse& r);
 void from_json(const nlohmann::json& j, ModelsResponse& r);
@@ -140,5 +167,7 @@ void to_json(nlohmann::json& j, const ImageGenerationRequest& r);
 void from_json(const nlohmann::json& j, ImageResponse& r);
 void to_json(nlohmann::json& j, const ModerationRequest& r);
 void from_json(const nlohmann::json& j, ModerationResponse& r);
+void to_json(nlohmann::json& j, const CompletionRequest& r);
+void from_json(const nlohmann::json& j, CompletionResponse& r);
 
 } // namespace ai_sdk

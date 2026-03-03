@@ -61,6 +61,16 @@ public:
     ImageResponse createImage(const ImageGenerationRequest& request);
     ImageResponse createImage(const std::string& prompt);
 
+    // Audio API
+    AudioTranscriptionResponse createTranscription(const AudioTranscriptionRequest& request);
+    AudioTranscriptionResponse createTranscription(const std::string& file_path, const std::string& model);
+    std::vector<uint8_t> createSpeech(const AudioSpeechRequest& request);
+    std::vector<uint8_t> createSpeech(const std::string& text, const std::string& voice);
+
+    // Completions API (legacy)
+    CompletionResponse createCompletion(const CompletionRequest& request);
+    CompletionResponse createCompletion(const std::string& model, const std::string& prompt);
+
 private:
     std::string callAPI(const std::string& model, const std::vector<Message>& messages,
                         std::optional<float> temperature = std::nullopt);
