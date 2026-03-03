@@ -188,6 +188,21 @@ struct CompletionResponse {
     } usage;
 };
 
+// Files API
+struct FileObject {
+    std::string id;
+    std::string object;
+    int bytes;
+    int64_t created_at;
+    std::string filename;
+    std::string purpose;
+};
+
+struct FileListResponse {
+    std::string object;
+    std::vector<FileObject> data;
+};
+
 void to_json(nlohmann::json& j, const EmbeddingRequest& r);
 void from_json(const nlohmann::json& j, EmbeddingResponse& r);
 void from_json(const nlohmann::json& j, ModelsResponse& r);
@@ -197,5 +212,7 @@ void to_json(nlohmann::json& j, const ModerationRequest& r);
 void from_json(const nlohmann::json& j, ModerationResponse& r);
 void to_json(nlohmann::json& j, const CompletionRequest& r);
 void from_json(const nlohmann::json& j, CompletionResponse& r);
+void from_json(const nlohmann::json& j, FileObject& r);
+void from_json(const nlohmann::json& j, FileListResponse& r);
 
 } // namespace ai_sdk

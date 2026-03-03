@@ -124,4 +124,22 @@ void from_json(const nlohmann::json& j, CompletionResponse& r) {
     j.at("usage").at("total_tokens").get_to(r.usage.total_tokens);
 }
 
+void from_json(const nlohmann::json& j, FileObject& r) {
+    j.at("id").get_to(r.id);
+    j.at("object").get_to(r.object);
+    j.at("bytes").get_to(r.bytes);
+    j.at("created_at").get_to(r.created_at);
+    j.at("filename").get_to(r.filename);
+    j.at("purpose").get_to(r.purpose);
+}
+
+void from_json(const nlohmann::json& j, FileListResponse& r) {
+    j.at("object").get_to(r.object);
+    for (const auto& item : j.at("data")) {
+        FileObject file;
+        from_json(item, file);
+        r.data.push_back(file);
+    }
+}
+
 } // namespace ai_sdk

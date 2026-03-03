@@ -325,6 +325,21 @@ CompletionResponse OpenAIClient::createCompletion(const std::string& model, cons
     return createCompletion(request);
 }
 
+FileObject OpenAIClient::uploadFile(const std::string& file_path, const std::string& purpose) {
+    std::map<std::string, std::string> fields = {{"purpose", purpose}};
+    std::map<std::string, std::string> files = {{"file", file_path}};
+    std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
+
+    std::string response = http_client_->postMultipart(config_.base_url + "/files", fields, files, headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
 AudioTranscriptionResponse OpenAIClient::createTranscription(const AudioTranscriptionRequest& request) {
     std::map<std::string, std::string> fields = {{"model", request.model}};
     if (request.language) fields["language"] = *request.language;

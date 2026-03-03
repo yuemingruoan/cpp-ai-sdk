@@ -75,6 +75,13 @@ public:
     CompletionResponse createCompletion(const CompletionRequest& request);
     CompletionResponse createCompletion(const std::string& model, const std::string& prompt);
 
+    // Files API
+    FileObject uploadFile(const std::string& file_path, const std::string& purpose);
+    FileListResponse listFiles();
+    FileObject retrieveFile(const std::string& file_id);
+    void deleteFile(const std::string& file_id);
+    std::string retrieveFileContent(const std::string& file_id);
+
 private:
     std::string callAPI(const std::string& model, const std::vector<Message>& messages,
                         std::optional<float> temperature = std::nullopt);
