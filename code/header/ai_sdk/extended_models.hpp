@@ -306,6 +306,55 @@ struct VideoListResponse {
     std::vector<VideoObject> data;
 };
 
+// Google Gemini
+struct GeminiPart {
+    std::optional<std::string> text;
+    std::optional<std::string> inline_data_mime_type;
+    std::optional<std::string> inline_data_data;
+};
+
+struct GeminiContent {
+    std::string role;
+    std::vector<GeminiPart> parts;
+};
+
+struct GenerationConfig {
+    std::optional<float> temperature;
+    std::optional<int> max_output_tokens;
+    std::optional<float> top_p;
+    std::optional<int> top_k;
+};
+
+struct GeminiRequest {
+    std::vector<GeminiContent> contents;
+    std::optional<GenerationConfig> generation_config;
+};
+
+struct GeminiCandidate {
+    GeminiContent content;
+    std::string finish_reason;
+};
+
+struct GeminiResponse {
+    std::vector<GeminiCandidate> candidates;
+    struct {
+        int prompt_token_count;
+        int candidates_token_count;
+        int total_token_count;
+    } usage_metadata;
+};
+
+struct GeminiEmbedding {
+    std::vector<float> values;
+};
+
+struct GeminiFile {
+    std::string name;
+    std::string display_name;
+    std::string mime_type;
+    std::string uri;
+};
+
 void to_json(nlohmann::json& j, const EmbeddingRequest& r);
 void from_json(const nlohmann::json& j, EmbeddingResponse& r);
 void from_json(const nlohmann::json& j, ModelsResponse& r);
@@ -331,5 +380,15 @@ void from_json(const nlohmann::json& j, Run& r);
 void to_json(nlohmann::json& j, const VideoGenerationRequest& r);
 void from_json(const nlohmann::json& j, VideoObject& r);
 void from_json(const nlohmann::json& j, VideoListResponse& r);
+void to_json(nlohmann::json& j, const GeminiPart& r);
+void from_json(const nlohmann::json& j, GeminiPart& r);
+void to_json(nlohmann::json& j, const GeminiContent& r);
+void from_json(const nlohmann::json& j, GeminiContent& r);
+void to_json(nlohmann::json& j, const GenerationConfig& r);
+void from_json(const nlohmann::json& j, GeminiCandidate& r);
+void to_json(nlohmann::json& j, const GeminiRequest& r);
+void from_json(const nlohmann::json& j, GeminiResponse& r);
+void from_json(const nlohmann::json& j, GeminiEmbedding& r);
+void from_json(const nlohmann::json& j, GeminiFile& r);
 
 } // namespace ai_sdk

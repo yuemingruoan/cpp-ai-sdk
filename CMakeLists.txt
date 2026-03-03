@@ -20,6 +20,7 @@ add_library(ai_sdk
     code/cpp/anthropic_client.cpp
     code/cpp/websocket_client.cpp
     code/cpp/realtime_client.cpp
+    code/cpp/google_client.cpp
 )
 
 target_include_directories(ai_sdk PUBLIC
@@ -37,3 +38,6 @@ target_link_libraries(openai_example PRIVATE ai_sdk)
 
 add_executable(anthropic_example examples/anthropic_example.cpp)
 target_link_libraries(anthropic_example PRIVATE ai_sdk)
+
+add_executable(google_example examples/google_example.cpp)
+target_link_libraries(google_example PRIVATE ai_sdk)

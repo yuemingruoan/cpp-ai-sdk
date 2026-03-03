@@ -252,4 +252,67 @@ void from_json(const nlohmann::json& j, VideoListResponse& r) {
     j.at("data").get_to(r.data);
 }
 
+void to_json(nlohmann::json& j, const GeminiPart& r) {
+    if (r.text) j["text"] = *r.text;
+    if (r.inline_data_mime_type && r.inline_data_data) {
+        j["inlineData"]["mimeType"] = *r.inline_data_mime_type;
+        j["inlineData"]["data"] = *r.inline_data_data;
+    }
+}
+
+void from_json(const nlohmann::json& j, GeminiPart& r) {
+    if (j.contains("text")) r.text = j["text"].get<std::string>();
+    if (j.contains("inlineData")) {
+        r.inline_data_mime_type = j["inlineData"]["mimeType"].get<std::string>();
+        r.inline_data_data = j["inlineData"]["data"].get<std::string>();
+    }
+}
+
+void to_json(nlohmann::json& j, const GeminiContent& r) {
+    j["role"] = r.role;
+    j["parts"] = r.parts;
+}
+
+void from_json(const nlohmann::json& j, GeminiContent& r) {
+    j.at("role").get_to(r.role);
+    j.at("parts").get_to(r.parts);
+}
+
+void to_json(nlohmann::json& j, const GenerationConfig& r) {
+    if (r.temperature) j["temperature"] = *r.temperature;
+    if (r.max_output_tokens) j["maxOutputTokens"] = *r.max_output_tokens;
+    if (r.top_p) j["topP"] = *r.top_p;
+    if (r.top_k) j["topK"] = *r.top_k;
+}
+
+void from_json(const nlohmann::json& j, GeminiCandidate& r) {
+    j.at("content").get_to(r.content);
+    if (j.contains("finishReason")) j.at("finishReason").get_to(r.finish_reason);
+}
+
+void to_json(nlohmann::json& j, const GeminiRequest& r) {
+    j["contents"] = r.contents;
+    if (r.generation_config) j["generationConfig"] = *r.generation_config;
+}
+
+void from_json(const nlohmann::json& j, GeminiResponse& r) {
+    j.at("candidates").get_to(r.candidates);
+    if (j.contains("usageMetadata")) {
+        r.usage_metadata.prompt_token_count = j["usageMetadata"]["promptTokenCount"].get<int>();
+        r.usage_metadata.candidates_token_count = j["usageMetadata"]["candidatesTokenCount"].get<int>();
+        r.usage_metadata.total_token_count = j["usageMetadata"]["totalTokenCount"].get<int>();
+    }
+}
+
+void from_json(const nlohmann::json& j, GeminiEmbedding& r) {
+    j.at("values").get_to(r.values);
+}
+
+void from_json(const nlohmann::json& j, GeminiFile& r) {
+    j.at("name").get_to(r.name);
+    if (j.contains("displayName")) j.at("displayName").get_to(r.display_name);
+    j.at("mimeType").get_to(r.mime_type);
+    j.at("uri").get_to(r.uri);
+}
+
 } // namespace ai_sdk
