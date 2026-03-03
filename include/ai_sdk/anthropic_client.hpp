@@ -40,6 +40,11 @@ public:
     void clearContext();
     std::vector<Message> getContext() const;
 
+    // Message Batches API
+    std::string createMessageBatch(const std::string& requests_file_path);
+    std::string retrieveMessageBatch(const std::string& batch_id);
+    std::string cancelMessageBatch(const std::string& batch_id);
+
 private:
     std::string callAPI(const std::string& model, const std::vector<Message>& messages,
                         const std::string& system_prompt = "");

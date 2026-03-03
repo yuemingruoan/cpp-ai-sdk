@@ -159,4 +159,34 @@ std::vector<Message> AnthropicClient::getContext() const {
     return {};
 }
 
+std::string AnthropicClient::createMessageBatch(const std::string& requests_file_path) {
+    nlohmann::json json_body = {{"requests", requests_file_path}};
+    std::map<std::string, std::string> headers = {
+        {"Content-Type", "application/json"},
+        {"x-api-key", api_key_},
+        {"anthropic-version", "2023-06-01"}
+    };
+
+    return http_client_->post(config_.base_url + "/messages/batches", json_body.dump(), headers);
+}
+
+std::string AnthropicClient::retrieveMessageBatch(const std::string& batch_id) {
+    std::map<std::string, std::string> headers = {
+        {"x-api-key", api_key_},
+        {"anthropic-version", "2023-06-01"}
+    };
+
+    return http_client_->get(config_.base_url + "/messages/batches/" + batch_id, headers);
+}
+
+std::string AnthropicClient::cancelMessageBatch(const std::string& batch_id) {
+    std::map<std::string, std::string> headers = {
+        {"Content-Type", "application/json"},
+        {"x-api-key", api_key_},
+        {"anthropic-version", "2023-06-01"}
+    };
+
+    return http_client_->post(config_.base_url + "/messages/batches/" + batch_id + "/cancel", "", headers);
+}
+
 } // namespace ai_sdk
