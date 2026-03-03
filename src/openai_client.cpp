@@ -340,6 +340,40 @@ FileObject OpenAIClient::uploadFile(const std::string& file_path, const std::str
     }
 }
 
+FileListResponse OpenAIClient::listFiles() {
+    std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
+    std::string response = http_client_->get(config_.base_url + "/files", headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+FileObject OpenAIClient::retrieveFile(const std::string& file_id) {
+    std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
+    std::string response = http_client_->get(config_.base_url + "/files/" + file_id, headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+void OpenAIClient::deleteFile(const std::string& file_id) {
+    std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
+    http_client_->deleteRequest(config_.base_url + "/files/" + file_id, headers);
+}
+
+std::string OpenAIClient::retrieveFileContent(const std::string& file_id) {
+    std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
+    return http_client_->get(config_.base_url + "/files/" + file_id + "/content", headers);
+}
+
 AudioTranscriptionResponse OpenAIClient::createTranscription(const AudioTranscriptionRequest& request) {
     std::map<std::string, std::string> fields = {{"model", request.model}};
     if (request.language) fields["language"] = *request.language;

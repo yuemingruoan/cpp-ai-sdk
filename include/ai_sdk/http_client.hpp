@@ -34,6 +34,12 @@ public:
                                      const std::string& body,
                                      const std::map<std::string, std::string>& headers);
 
+    std::string get(const std::string& url,
+                    const std::map<std::string, std::string>& headers);
+
+    void deleteRequest(const std::string& url,
+                       const std::map<std::string, std::string>& headers);
+
 private:
     class Impl;
     Impl* impl_;

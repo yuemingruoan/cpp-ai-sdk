@@ -194,4 +194,73 @@ std::vector<uint8_t> HttpClient::postBinary(const std::string& url,
     return response;
 }
 
+std::string HttpClient::get(const std::string& url,
+                             const std::map<std::string, std::string>& headers) {
+    CURL* curl = curl_easy_init();
+    if (!curl) throw NetworkException("Failed to initialize CURL");
+
+    std::string response;
+    struct curl_slist* header_list = nullptr;
+
+    for (const auto& [key, value] : headers) {
+        header_list = curl_slist_append(header_list, (key + ": " + value).c_str());
+    }
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+    CURLcode res = curl_easy_perform(curl);
+    long http_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+    curl_slist_free_all(header_list);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK) {
+        throw NetworkException(std::string("CURL error: ") + curl_easy_strerror(res));
+    }
+
+    if (http_code >= 400) {
+        throw APIException("HTTP error: " + response, http_code);
+    }
+
+    return response;
+}
+
+void HttpClient::deleteRequest(const std::string& url,
+                                const std::map<std::string, std::string>& headers) {
+    CURL* curl = curl_easy_init();
+    if (!curl) throw NetworkException("Failed to initialize CURL");
+
+    std::string response;
+    struct curl_slist* header_list = nullptr;
+
+    for (const auto& [key, value] : headers) {
+        header_list = curl_slist_append(header_list, (key + ": " + value).c_str());
+    }
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+    CURLcode res = curl_easy_perform(curl);
+    long http_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+    curl_slist_free_all(header_list);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK) {
+        throw NetworkException(std::string("CURL error: ") + curl_easy_strerror(res));
+    }
+
+    if (http_code >= 400) {
+        throw APIException("HTTP error: " + response, http_code);
+    }
+}
+
 } // namespace ai_sdk
