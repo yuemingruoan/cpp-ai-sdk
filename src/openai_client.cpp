@@ -1,6 +1,7 @@
 #include "ai_sdk/openai_client.hpp"
 #include "ai_sdk/http_client.hpp"
 #include "ai_sdk/context_manager.hpp"
+#include "ai_sdk/extended_models.hpp"
 #include <nlohmann/json.hpp>
 
 namespace ai_sdk {
@@ -153,6 +154,111 @@ std::vector<Message> OpenAIClient::getContext() const {
         return context_->getMessages();
     }
     return {};
+}
+
+EmbeddingResponse OpenAIClient::createEmbedding(const EmbeddingRequest& request) {
+    nlohmann::json json_body = request;
+    std::map<std::string, std::string> headers = {
+        {"Content-Type", "application/json"},
+        {"Authorization", "Bearer " + api_key_}
+    };
+
+    std::string response = http_client_->post(config_.base_url + "/embeddings", json_body.dump(), headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+EmbeddingResponse OpenAIClient::createEmbedding(const std::string& model, const std::vector<std::string>& input) {
+    EmbeddingRequest request;
+    request.model = model;
+    request.input = input;
+    return createEmbedding(request);
+}
+
+ModelsResponse OpenAIClient::listModels() {
+    std::map<std::string, std::string> headers = {
+        {"Authorization", "Bearer " + api_key_}
+    };
+
+    std::string response = http_client_->post(config_.base_url + "/models", "", headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+Model OpenAIClient::retrieveModel(const std::string& model_id) {
+    std::map<std::string, std::string> headers = {
+        {"Authorization", "Bearer " + api_key_}
+    };
+
+    std::string response = http_client_->post(config_.base_url + "/models/" + model_id, "", headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        Model model;
+        json_response.at("id").get_to(model.id);
+        json_response.at("object").get_to(model.object);
+        json_response.at("created").get_to(model.created);
+        json_response.at("owned_by").get_to(model.owned_by);
+        return model;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+ModerationResponse OpenAIClient::createModeration(const ModerationRequest& request) {
+    nlohmann::json json_body = request;
+    std::map<std::string, std::string> headers = {
+        {"Content-Type", "application/json"},
+        {"Authorization", "Bearer " + api_key_}
+    };
+
+    std::string response = http_client_->post(config_.base_url + "/moderations", json_body.dump(), headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+ModerationResponse OpenAIClient::createModeration(const std::string& input) {
+    ModerationRequest request;
+    request.input = input;
+    return createModeration(request);
+}
+
+ImageResponse OpenAIClient::createImage(const ImageGenerationRequest& request) {
+    nlohmann::json json_body = request;
+    std::map<std::string, std::string> headers = {
+        {"Content-Type", "application/json"},
+        {"Authorization", "Bearer " + api_key_}
+    };
+
+    std::string response = http_client_->post(config_.base_url + "/images/generations", json_body.dump(), headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+ImageResponse OpenAIClient::createImage(const std::string& prompt) {
+    ImageGenerationRequest request;
+    request.prompt = prompt;
+    return createImage(request);
 }
 
 } // namespace ai_sdk

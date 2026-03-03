@@ -5,6 +5,7 @@
 #include <future>
 #include <optional>
 #include "models.hpp"
+#include "extended_models.hpp"
 #include "types.hpp"
 
 namespace ai_sdk {
@@ -43,6 +44,22 @@ public:
 
     void clearContext();
     std::vector<Message> getContext() const;
+
+    // Embeddings API
+    EmbeddingResponse createEmbedding(const EmbeddingRequest& request);
+    EmbeddingResponse createEmbedding(const std::string& model, const std::vector<std::string>& input);
+
+    // Models API
+    ModelsResponse listModels();
+    Model retrieveModel(const std::string& model_id);
+
+    // Moderations API
+    ModerationResponse createModeration(const ModerationRequest& request);
+    ModerationResponse createModeration(const std::string& input);
+
+    // Images API
+    ImageResponse createImage(const ImageGenerationRequest& request);
+    ImageResponse createImage(const std::string& prompt);
 
 private:
     std::string callAPI(const std::string& model, const std::vector<Message>& messages,

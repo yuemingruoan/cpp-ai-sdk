@@ -9,6 +9,7 @@ find_package(CURL REQUIRED)
 add_library(ai_sdk
     src/http_client.cpp
     src/models.cpp
+    src/extended_models.cpp
     src/context_manager.cpp
     src/openai_client.cpp
     src/anthropic_client.cpp
