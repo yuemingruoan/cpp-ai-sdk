@@ -203,6 +203,29 @@ struct FileListResponse {
     std::vector<FileObject> data;
 };
 
+// Batch API
+struct BatchRequest {
+    std::string input_file_id;
+    std::string endpoint;
+    std::string completion_window;
+    std::optional<std::string> metadata;
+};
+
+struct BatchObject {
+    std::string id;
+    std::string object;
+    std::string endpoint;
+    std::string input_file_id;
+    std::string completion_window;
+    std::string status;
+    int64_t created_at;
+};
+
+struct BatchListResponse {
+    std::string object;
+    std::vector<BatchObject> data;
+};
+
 void to_json(nlohmann::json& j, const EmbeddingRequest& r);
 void from_json(const nlohmann::json& j, EmbeddingResponse& r);
 void from_json(const nlohmann::json& j, ModelsResponse& r);
@@ -214,5 +237,8 @@ void to_json(nlohmann::json& j, const CompletionRequest& r);
 void from_json(const nlohmann::json& j, CompletionResponse& r);
 void from_json(const nlohmann::json& j, FileObject& r);
 void from_json(const nlohmann::json& j, FileListResponse& r);
+void to_json(nlohmann::json& j, const BatchRequest& r);
+void from_json(const nlohmann::json& j, BatchObject& r);
+void from_json(const nlohmann::json& j, BatchListResponse& r);
 
 } // namespace ai_sdk

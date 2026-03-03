@@ -82,6 +82,12 @@ public:
     void deleteFile(const std::string& file_id);
     std::string retrieveFileContent(const std::string& file_id);
 
+    // Batch API
+    BatchObject createBatch(const BatchRequest& request);
+    BatchObject retrieveBatch(const std::string& batch_id);
+    BatchObject cancelBatch(const std::string& batch_id);
+    BatchListResponse listBatches();
+
 private:
     std::string callAPI(const std::string& model, const std::vector<Message>& messages,
                         std::optional<float> temperature = std::nullopt);

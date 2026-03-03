@@ -142,4 +142,32 @@ void from_json(const nlohmann::json& j, FileListResponse& r) {
     }
 }
 
+void to_json(nlohmann::json& j, const BatchRequest& r) {
+    j = nlohmann::json{
+        {"input_file_id", r.input_file_id},
+        {"endpoint", r.endpoint},
+        {"completion_window", r.completion_window}
+    };
+    if (r.metadata) j["metadata"] = *r.metadata;
+}
+
+void from_json(const nlohmann::json& j, BatchObject& r) {
+    j.at("id").get_to(r.id);
+    j.at("object").get_to(r.object);
+    j.at("endpoint").get_to(r.endpoint);
+    j.at("input_file_id").get_to(r.input_file_id);
+    j.at("completion_window").get_to(r.completion_window);
+    j.at("status").get_to(r.status);
+    j.at("created_at").get_to(r.created_at);
+}
+
+void from_json(const nlohmann::json& j, BatchListResponse& r) {
+    j.at("object").get_to(r.object);
+    for (const auto& item : j.at("data")) {
+        BatchObject batch;
+        from_json(item, batch);
+        r.data.push_back(batch);
+    }
+}
+
 } // namespace ai_sdk
