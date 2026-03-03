@@ -48,3 +48,9 @@ target_link_libraries(google_oauth_example PRIVATE ai_sdk)
 
 add_executable(google_access_token_example examples/google_access_token_example.cpp)
 target_link_libraries(google_access_token_example PRIVATE ai_sdk)
+
+add_executable(test_sdk test-server/test_sdk.cpp)
+target_link_libraries(test_sdk PRIVATE ai_sdk)
+
+add_executable(test_comprehensive test-server/test_comprehensive.cpp)
+target_link_libraries(test_comprehensive PRIVATE ai_sdk)

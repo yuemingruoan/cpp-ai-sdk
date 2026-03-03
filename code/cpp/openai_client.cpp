@@ -186,7 +186,7 @@ ModelsResponse OpenAIClient::listModels() {
         {"Authorization", "Bearer " + api_key_}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/models", "", headers);
+    std::string response = http_client_->get(config_.base_url + "/models", headers);
 
     try {
         nlohmann::json json_response = nlohmann::json::parse(response);
@@ -201,7 +201,7 @@ Model OpenAIClient::retrieveModel(const std::string& model_id) {
         {"Authorization", "Bearer " + api_key_}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/models/" + model_id, "", headers);
+    std::string response = http_client_->get(config_.base_url + "/models/" + model_id, headers);
 
     try {
         nlohmann::json json_response = nlohmann::json::parse(response);
