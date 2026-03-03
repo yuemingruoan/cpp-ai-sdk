@@ -12,18 +12,18 @@ set(USE_ZLIB ON CACHE BOOL "Enable zlib compression")
 add_subdirectory(code/third_party/ixwebsocket EXCLUDE_FROM_ALL)
 
 add_library(ai_sdk
-    src/http_client.cpp
-    src/models.cpp
-    src/extended_models.cpp
-    src/context_manager.cpp
-    src/openai_client.cpp
-    src/anthropic_client.cpp
-    src/websocket_client.cpp
-    src/realtime_client.cpp
+    code/cpp/http_client.cpp
+    code/cpp/models.cpp
+    code/cpp/extended_models.cpp
+    code/cpp/context_manager.cpp
+    code/cpp/openai_client.cpp
+    code/cpp/anthropic_client.cpp
+    code/cpp/websocket_client.cpp
+    code/cpp/realtime_client.cpp
 )
 
 target_include_directories(ai_sdk PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/code/header
     ${CMAKE_CURRENT_SOURCE_DIR}/code/third_party
 )
 
