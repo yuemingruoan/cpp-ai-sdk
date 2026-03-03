@@ -382,4 +382,28 @@ AudioTranslationResponse OpenAIClient::createTranslation(const std::string& file
     return createTranslation(request);
 }
 
+std::vector<uint8_t> OpenAIClient::createSpeech(const AudioSpeechRequest& request) {
+    nlohmann::json json_body;
+    json_body["model"] = request.model;
+    json_body["input"] = request.input;
+    json_body["voice"] = request.voice;
+    if (request.response_format) json_body["response_format"] = *request.response_format;
+    if (request.speed) json_body["speed"] = *request.speed;
+
+    std::map<std::string, std::string> headers = {
+        {"Content-Type", "application/json"},
+        {"Authorization", "Bearer " + api_key_}
+    };
+
+    return http_client_->postBinary(config_.base_url + "/audio/speech", json_body.dump(), headers);
+}
+
+std::vector<uint8_t> OpenAIClient::createSpeech(const std::string& text, const std::string& voice) {
+    AudioSpeechRequest request;
+    request.model = "tts-1";
+    request.input = text;
+    request.voice = voice;
+    return createSpeech(request);
+}
+
 } // namespace ai_sdk

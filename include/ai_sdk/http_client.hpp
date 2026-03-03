@@ -30,6 +30,10 @@ public:
                               const std::map<std::string, std::string>& files,
                               const std::map<std::string, std::string>& headers);
 
+    std::vector<uint8_t> postBinary(const std::string& url,
+                                     const std::string& body,
+                                     const std::map<std::string, std::string>& headers);
+
 private:
     class Impl;
     Impl* impl_;

@@ -150,4 +150,48 @@ std::string HttpClient::postMultipart(const std::string& url,
     return response;
 }
 
+static size_t WriteBinaryCallback(void* contents, size_t size, size_t nmemb, void* userp) {
+    auto* buffer = static_cast<std::vector<uint8_t>*>(userp);
+    size_t total_size = size * nmemb;
+    buffer->insert(buffer->end(), (uint8_t*)contents, (uint8_t*)contents + total_size);
+    return total_size;
+}
+
+std::vector<uint8_t> HttpClient::postBinary(const std::string& url,
+                                             const std::string& body,
+                                             const std::map<std::string, std::string>& headers) {
+    CURL* curl = curl_easy_init();
+    if (!curl) throw NetworkException("Failed to initialize CURL");
+
+    std::vector<uint8_t> response;
+    struct curl_slist* header_list = nullptr;
+
+    for (const auto& [key, value] : headers) {
+        header_list = curl_slist_append(header_list, (key + ": " + value).c_str());
+    }
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteBinaryCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+    CURLcode res = curl_easy_perform(curl);
+    long http_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+    curl_slist_free_all(header_list);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK) {
+        throw NetworkException(std::string("CURL error: ") + curl_easy_strerror(res));
+    }
+
+    if (http_code >= 400) {
+        throw APIException("HTTP error", http_code);
+    }
+
+    return response;
+}
+
 } // namespace ai_sdk
