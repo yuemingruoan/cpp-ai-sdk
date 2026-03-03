@@ -1,6 +1,7 @@
 #include "ai_sdk/openai_client.hpp"
 #include "ai_sdk/http_client.hpp"
 #include "ai_sdk/context_manager.hpp"
+#include "ai_sdk/websocket_client.hpp"
 #include "ai_sdk/extended_models.hpp"
 #include <nlohmann/json.hpp>
 
@@ -717,6 +718,55 @@ VideoListResponse OpenAIClient::listVideos() {
     } catch (const std::exception& e) {
         throw ParseException(std::string("Failed to parse response: ") + e.what());
     }
+}
+
+void OpenAIClient::connectResponseWebSocket() {
+    if (!ws_client_) {
+        ws_client_ = std::make_unique<WebSocketClient>();
+    }
+
+    std::string url = "wss://api.openai.com/v1/responses";
+    std::map<std::string, std::string> headers = {
+        {"Authorization", "Bearer " + api_key_}
+    };
+
+    ws_client_->setMessageCallback([this](const std::string& message) {
+        if (response_event_callback_) {
+            response_event_callback_(message);
+        }
+    });
+
+    ws_client_->connect(url, headers);
+}
+
+void OpenAIClient::disconnectResponseWebSocket() {
+    if (ws_client_) {
+        ws_client_->close();
+    }
+}
+
+void OpenAIClient::sendResponseCreate(const std::string& model, const std::vector<Message>& messages, const std::string& previous_response_id) {
+    nlohmann::json event;
+    event["type"] = "response.create";
+    event["response"]["model"] = model;
+
+    nlohmann::json msgs = nlohmann::json::array();
+    for (const auto& msg : messages) {
+        msgs.push_back({{"role", msg.role}, {"content", msg.content}});
+    }
+    event["response"]["messages"] = msgs;
+
+    if (!previous_response_id.empty()) {
+        event["response"]["previous_response_id"] = previous_response_id;
+    }
+
+    if (ws_client_) {
+        ws_client_->send(event.dump());
+    }
+}
+
+void OpenAIClient::setResponseEventCallback(StreamCallback callback) {
+    response_event_callback_ = callback;
 }
 
 } // namespace ai_sdk

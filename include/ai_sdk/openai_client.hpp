@@ -12,6 +12,7 @@ namespace ai_sdk {
 
 class HttpClient;
 class ContextManager;
+class WebSocketClient;
 
 struct ClientConfig {
     bool auto_context = true;
@@ -108,12 +109,20 @@ public:
     VideoObject getVideoStatus(const std::string& video_id);
     VideoListResponse listVideos();
 
+    // WebSocket Response API
+    void connectResponseWebSocket();
+    void disconnectResponseWebSocket();
+    void sendResponseCreate(const std::string& model, const std::vector<Message>& messages, const std::string& previous_response_id = "");
+    void setResponseEventCallback(StreamCallback callback);
+
 private:
     std::string callAPI(const std::string& model, const std::vector<Message>& messages,
                         std::optional<float> temperature = std::nullopt);
 
     std::unique_ptr<HttpClient> http_client_;
     std::unique_ptr<ContextManager> context_;
+    std::unique_ptr<WebSocketClient> ws_client_;
+    StreamCallback response_event_callback_;
     ClientConfig config_;
     std::string api_key_;
 };

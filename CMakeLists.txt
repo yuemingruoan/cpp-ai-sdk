@@ -19,6 +19,7 @@ add_library(ai_sdk
     src/openai_client.cpp
     src/anthropic_client.cpp
     src/websocket_client.cpp
+    src/realtime_client.cpp
 )
 
 target_include_directories(ai_sdk PUBLIC
