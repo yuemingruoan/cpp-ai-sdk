@@ -98,4 +98,56 @@ void HttpClient::postStream(const std::string& url,
     }
 }
 
+std::string HttpClient::postMultipart(const std::string& url,
+                                       const std::map<std::string, std::string>& fields,
+                                       const std::map<std::string, std::string>& files,
+                                       const std::map<std::string, std::string>& headers) {
+    CURL* curl = curl_easy_init();
+    if (!curl) throw NetworkException("Failed to initialize CURL");
+
+    std::string response;
+    curl_mime* mime = curl_mime_init(curl);
+
+    for (const auto& [key, value] : fields) {
+        curl_mimepart* part = curl_mime_addpart(mime);
+        curl_mime_name(part, key.c_str());
+        curl_mime_data(part, value.c_str(), CURL_ZERO_TERMINATED);
+    }
+
+    for (const auto& [key, filepath] : files) {
+        curl_mimepart* part = curl_mime_addpart(mime);
+        curl_mime_name(part, key.c_str());
+        curl_mime_filedata(part, filepath.c_str());
+    }
+
+    struct curl_slist* header_list = nullptr;
+    for (const auto& [key, value] : headers) {
+        header_list = curl_slist_append(header_list, (key + ": " + value).c_str());
+    }
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+    CURLcode res = curl_easy_perform(curl);
+    long http_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+    curl_slist_free_all(header_list);
+    curl_mime_free(mime);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK) {
+        throw NetworkException(std::string("CURL error: ") + curl_easy_strerror(res));
+    }
+
+    if (http_code >= 400) {
+        throw APIException("HTTP error: " + response, http_code);
+    }
+
+    return response;
+}
+
 } // namespace ai_sdk

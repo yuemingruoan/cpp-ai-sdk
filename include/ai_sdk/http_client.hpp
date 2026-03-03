@@ -25,6 +25,11 @@ public:
                     const std::map<std::string, std::string>& headers,
                     StreamCallback callback);
 
+    std::string postMultipart(const std::string& url,
+                              const std::map<std::string, std::string>& fields,
+                              const std::map<std::string, std::string>& files,
+                              const std::map<std::string, std::string>& headers);
+
 private:
     class Impl;
     Impl* impl_;
