@@ -261,6 +261,46 @@ ImageResponse OpenAIClient::createImage(const std::string& prompt) {
     return createImage(request);
 }
 
+ImageResponse OpenAIClient::editImage(const ImageEditRequest& request) {
+    std::map<std::string, std::string> fields = {{"prompt", request.prompt}};
+    if (request.model) fields["model"] = *request.model;
+    if (request.n) fields["n"] = std::to_string(*request.n);
+    if (request.size) fields["size"] = *request.size;
+
+    std::map<std::string, std::string> files = {{"image", request.image_path}};
+    if (request.mask_path) files["mask"] = *request.mask_path;
+
+    std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
+
+    std::string response = http_client_->postMultipart(config_.base_url + "/images/edits", fields, files, headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+ImageResponse OpenAIClient::createImageVariation(const ImageVariationRequest& request) {
+    std::map<std::string, std::string> fields;
+    if (request.model) fields["model"] = *request.model;
+    if (request.n) fields["n"] = std::to_string(*request.n);
+    if (request.size) fields["size"] = *request.size;
+
+    std::map<std::string, std::string> files = {{"image", request.image_path}};
+    std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
+
+    std::string response = http_client_->postMultipart(config_.base_url + "/images/variations", fields, files, headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        return json_response;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
 CompletionResponse OpenAIClient::createCompletion(const CompletionRequest& request) {
     nlohmann::json json_body = request;
     std::map<std::string, std::string> headers = {
@@ -283,6 +323,63 @@ CompletionResponse OpenAIClient::createCompletion(const std::string& model, cons
     request.model = model;
     request.prompt = prompt;
     return createCompletion(request);
+}
+
+AudioTranscriptionResponse OpenAIClient::createTranscription(const AudioTranscriptionRequest& request) {
+    std::map<std::string, std::string> fields = {{"model", request.model}};
+    if (request.language) fields["language"] = *request.language;
+    if (request.prompt) fields["prompt"] = *request.prompt;
+    if (request.response_format) fields["response_format"] = *request.response_format;
+    if (request.temperature) fields["temperature"] = std::to_string(*request.temperature);
+
+    std::map<std::string, std::string> files = {{"file", request.file_path}};
+    std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
+
+    std::string response = http_client_->postMultipart(config_.base_url + "/audio/transcriptions", fields, files, headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        AudioTranscriptionResponse result;
+        result.text = json_response["text"].get<std::string>();
+        return result;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+AudioTranscriptionResponse OpenAIClient::createTranscription(const std::string& file_path, const std::string& model) {
+    AudioTranscriptionRequest request;
+    request.file_path = file_path;
+    request.model = model;
+    return createTranscription(request);
+}
+
+AudioTranslationResponse OpenAIClient::createTranslation(const AudioTranslationRequest& request) {
+    std::map<std::string, std::string> fields = {{"model", request.model}};
+    if (request.prompt) fields["prompt"] = *request.prompt;
+    if (request.response_format) fields["response_format"] = *request.response_format;
+    if (request.temperature) fields["temperature"] = std::to_string(*request.temperature);
+
+    std::map<std::string, std::string> files = {{"file", request.file_path}};
+    std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
+
+    std::string response = http_client_->postMultipart(config_.base_url + "/audio/translations", fields, files, headers);
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response);
+        AudioTranslationResponse result;
+        result.text = json_response["text"].get<std::string>();
+        return result;
+    } catch (const std::exception& e) {
+        throw ParseException(std::string("Failed to parse response: ") + e.what());
+    }
+}
+
+AudioTranslationResponse OpenAIClient::createTranslation(const std::string& file_path, const std::string& model) {
+    AudioTranslationRequest request;
+    request.file_path = file_path;
+    request.model = model;
+    return createTranslation(request);
 }
 
 } // namespace ai_sdk

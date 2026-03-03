@@ -60,10 +60,14 @@ public:
     // Images API
     ImageResponse createImage(const ImageGenerationRequest& request);
     ImageResponse createImage(const std::string& prompt);
+    ImageResponse editImage(const ImageEditRequest& request);
+    ImageResponse createImageVariation(const ImageVariationRequest& request);
 
     // Audio API
     AudioTranscriptionResponse createTranscription(const AudioTranscriptionRequest& request);
     AudioTranscriptionResponse createTranscription(const std::string& file_path, const std::string& model);
+    AudioTranslationResponse createTranslation(const AudioTranslationRequest& request);
+    AudioTranslationResponse createTranslation(const std::string& file_path, const std::string& model);
     std::vector<uint8_t> createSpeech(const AudioSpeechRequest& request);
     std::vector<uint8_t> createSpeech(const std::string& text, const std::string& voice);
 

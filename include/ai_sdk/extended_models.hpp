@@ -65,6 +65,22 @@ struct ImageResponse {
     std::vector<ImageData> data;
 };
 
+struct ImageEditRequest {
+    std::string image_path;
+    std::string prompt;
+    std::optional<std::string> mask_path;
+    std::optional<std::string> model;
+    std::optional<int> n;
+    std::optional<std::string> size;
+};
+
+struct ImageVariationRequest {
+    std::string image_path;
+    std::optional<std::string> model;
+    std::optional<int> n;
+    std::optional<std::string> size;
+};
+
 // Audio
 struct AudioTranscriptionRequest {
     std::string file_path;
@@ -76,6 +92,18 @@ struct AudioTranscriptionRequest {
 };
 
 struct AudioTranscriptionResponse {
+    std::string text;
+};
+
+struct AudioTranslationRequest {
+    std::string file_path;
+    std::string model;
+    std::optional<std::string> prompt;
+    std::optional<std::string> response_format;
+    std::optional<float> temperature;
+};
+
+struct AudioTranslationResponse {
     std::string text;
 };
 
