@@ -29,85 +29,85 @@ public:
     OpenAIClient(const std::string& api_key, const ClientConfig& config);
     ~OpenAIClient();
 
-    std::string chat(const std::string& message);
-    std::string chat(const std::string& model, const std::string& message);
-    std::string chat(const std::string& model, const std::string& message, float temperature);
-    std::string chat(const std::string& model, const std::vector<Message>& messages);
+    Result<std::string> chat(const std::string& message);
+    Result<std::string> chat(const std::string& model, const std::string& message);
+    Result<std::string> chat(const std::string& model, const std::string& message, float temperature);
+    Result<std::string> chat(const std::string& model, const std::vector<Message>& messages);
 
-    std::future<std::string> chatAsync(const std::string& message);
-    std::future<std::string> chatAsync(const std::string& model, const std::string& message);
+    std::future<Result<std::string>> chatAsync(const std::string& message);
+    std::future<Result<std::string>> chatAsync(const std::string& model, const std::string& message);
 
-    void chatStream(const std::string& message, StreamCallback callback);
-    void chatStream(const std::string& model, const std::string& message, StreamCallback callback);
+    Result<void> chatStream(const std::string& message, StreamCallback callback);
+    Result<void> chatStream(const std::string& model, const std::string& message, StreamCallback callback);
 
-    ChatResponse chatCompletion(const ChatRequest& request);
-    std::future<ChatResponse> chatCompletionAsync(const ChatRequest& request);
+    Result<ChatResponse> chatCompletion(const ChatRequest& request);
+    std::future<Result<ChatResponse>> chatCompletionAsync(const ChatRequest& request);
 
     void clearContext();
     std::vector<Message> getContext() const;
 
     // Embeddings API
-    EmbeddingResponse createEmbedding(const EmbeddingRequest& request);
-    EmbeddingResponse createEmbedding(const std::string& model, const std::vector<std::string>& input);
+    Result<EmbeddingResponse> createEmbedding(const EmbeddingRequest& request);
+    Result<EmbeddingResponse> createEmbedding(const std::string& model, const std::vector<std::string>& input);
 
     // Models API
-    ModelsResponse listModels();
-    Model retrieveModel(const std::string& model_id);
+    Result<ModelsResponse> listModels();
+    Result<Model> retrieveModel(const std::string& model_id);
 
     // Moderations API
-    ModerationResponse createModeration(const ModerationRequest& request);
-    ModerationResponse createModeration(const std::string& input);
+    Result<ModerationResponse> createModeration(const ModerationRequest& request);
+    Result<ModerationResponse> createModeration(const std::string& input);
 
     // Images API
-    ImageResponse createImage(const ImageGenerationRequest& request);
-    ImageResponse createImage(const std::string& prompt);
-    ImageResponse editImage(const ImageEditRequest& request);
-    ImageResponse createImageVariation(const ImageVariationRequest& request);
+    Result<ImageResponse> createImage(const ImageGenerationRequest& request);
+    Result<ImageResponse> createImage(const std::string& prompt);
+    Result<ImageResponse> editImage(const ImageEditRequest& request);
+    Result<ImageResponse> createImageVariation(const ImageVariationRequest& request);
 
     // Audio API
-    AudioTranscriptionResponse createTranscription(const AudioTranscriptionRequest& request);
-    AudioTranscriptionResponse createTranscription(const std::string& file_path, const std::string& model);
-    AudioTranslationResponse createTranslation(const AudioTranslationRequest& request);
-    AudioTranslationResponse createTranslation(const std::string& file_path, const std::string& model);
-    std::vector<uint8_t> createSpeech(const AudioSpeechRequest& request);
-    std::vector<uint8_t> createSpeech(const std::string& text, const std::string& voice);
+    Result<AudioTranscriptionResponse> createTranscription(const AudioTranscriptionRequest& request);
+    Result<AudioTranscriptionResponse> createTranscription(const std::string& file_path, const std::string& model);
+    Result<AudioTranslationResponse> createTranslation(const AudioTranslationRequest& request);
+    Result<AudioTranslationResponse> createTranslation(const std::string& file_path, const std::string& model);
+    Result<std::vector<uint8_t>> createSpeech(const AudioSpeechRequest& request);
+    Result<std::vector<uint8_t>> createSpeech(const std::string& text, const std::string& voice);
 
     // Completions API (legacy)
-    CompletionResponse createCompletion(const CompletionRequest& request);
-    CompletionResponse createCompletion(const std::string& model, const std::string& prompt);
+    Result<CompletionResponse> createCompletion(const CompletionRequest& request);
+    Result<CompletionResponse> createCompletion(const std::string& model, const std::string& prompt);
 
     // Files API
-    FileObject uploadFile(const std::string& file_path, const std::string& purpose);
-    FileListResponse listFiles();
-    FileObject retrieveFile(const std::string& file_id);
-    void deleteFile(const std::string& file_id);
-    std::string retrieveFileContent(const std::string& file_id);
+    Result<FileObject> uploadFile(const std::string& file_path, const std::string& purpose);
+    Result<FileListResponse> listFiles();
+    Result<FileObject> retrieveFile(const std::string& file_id);
+    Result<void> deleteFile(const std::string& file_id);
+    Result<std::string> retrieveFileContent(const std::string& file_id);
 
     // Batch API
-    BatchObject createBatch(const BatchRequest& request);
-    BatchObject retrieveBatch(const std::string& batch_id);
-    BatchObject cancelBatch(const std::string& batch_id);
-    BatchListResponse listBatches();
+    Result<BatchObject> createBatch(const BatchRequest& request);
+    Result<BatchObject> retrieveBatch(const std::string& batch_id);
+    Result<BatchObject> cancelBatch(const std::string& batch_id);
+    Result<BatchListResponse> listBatches();
 
     // Fine-tuning API
-    FineTuningJob createFineTuningJob(const FineTuningRequest& request);
-    FineTuningListResponse listFineTuningJobs();
-    FineTuningJob retrieveFineTuningJob(const std::string& job_id);
-    FineTuningJob cancelFineTuningJob(const std::string& job_id);
+    Result<FineTuningJob> createFineTuningJob(const FineTuningRequest& request);
+    Result<FineTuningListResponse> listFineTuningJobs();
+    Result<FineTuningJob> retrieveFineTuningJob(const std::string& job_id);
+    Result<FineTuningJob> cancelFineTuningJob(const std::string& job_id);
 
     // Assistants API
-    Assistant createAssistant(const AssistantRequest& request);
-    Assistant retrieveAssistant(const std::string& assistant_id);
-    void deleteAssistant(const std::string& assistant_id);
-    Thread createThread();
-    ThreadMessage createMessage(const std::string& thread_id, const std::string& role, const std::string& content);
-    Run createRun(const std::string& thread_id, const std::string& assistant_id);
-    Run retrieveRun(const std::string& thread_id, const std::string& run_id);
+    Result<Assistant> createAssistant(const AssistantRequest& request);
+    Result<Assistant> retrieveAssistant(const std::string& assistant_id);
+    Result<void> deleteAssistant(const std::string& assistant_id);
+    Result<Thread> createThread();
+    Result<ThreadMessage> createMessage(const std::string& thread_id, const std::string& role, const std::string& content);
+    Result<Run> createRun(const std::string& thread_id, const std::string& assistant_id);
+    Result<Run> retrieveRun(const std::string& thread_id, const std::string& run_id);
 
     // Videos API
-    VideoObject createVideo(const VideoGenerationRequest& request);
-    VideoObject getVideoStatus(const std::string& video_id);
-    VideoListResponse listVideos();
+    Result<VideoObject> createVideo(const VideoGenerationRequest& request);
+    Result<VideoObject> getVideoStatus(const std::string& video_id);
+    Result<VideoListResponse> listVideos();
 
     // WebSocket Response API
     void connectResponseWebSocket();
@@ -116,8 +116,9 @@ public:
     void setResponseEventCallback(StreamCallback callback);
 
 private:
-    std::string callAPI(const std::string& model, const std::vector<Message>& messages,
-                        std::optional<float> temperature = std::nullopt);
+    Result<std::string> callAPI(const std::string& model,
+                                const std::vector<Message>& messages,
+                                std::optional<float> temperature = std::nullopt);
 
     std::unique_ptr<HttpClient> http_client_;
     std::unique_ptr<ContextManager> context_;

@@ -34,37 +34,37 @@ public:
     ~GoogleClient();
 
     // Chat API (简化接口)
-    std::string chat(const std::string& message);
-    std::string chat(const std::string& model, const std::string& message);
-    std::string chat(const std::string& model, const std::string& message, float temperature);
+    Result<std::string> chat(const std::string& message);
+    Result<std::string> chat(const std::string& model, const std::string& message);
+    Result<std::string> chat(const std::string& model, const std::string& message, float temperature);
 
-    std::future<std::string> chatAsync(const std::string& message);
-    std::future<std::string> chatAsync(const std::string& model, const std::string& message);
+    std::future<Result<std::string>> chatAsync(const std::string& message);
+    std::future<Result<std::string>> chatAsync(const std::string& model, const std::string& message);
 
-    void chatStream(const std::string& message, StreamCallback callback);
-    void chatStream(const std::string& model, const std::string& message, StreamCallback callback);
+    Result<void> chatStream(const std::string& message, StreamCallback callback);
+    Result<void> chatStream(const std::string& model, const std::string& message, StreamCallback callback);
 
     // Generate Content API
-    GeminiResponse generateContent(const std::string& model, const std::vector<GeminiContent>& contents);
-    GeminiResponse generateContent(const std::string& model, const std::vector<GeminiContent>& contents, const GenerationConfig& config);
-    void streamGenerateContent(const std::string& model, const std::vector<GeminiContent>& contents, StreamCallback callback);
+    Result<GeminiResponse> generateContent(const std::string& model, const std::vector<GeminiContent>& contents);
+    Result<GeminiResponse> generateContent(const std::string& model, const std::vector<GeminiContent>& contents, const GenerationConfig& config);
+    Result<void> streamGenerateContent(const std::string& model, const std::vector<GeminiContent>& contents, StreamCallback callback);
 
     // Embedding API
-    GeminiEmbedding embedContent(const std::string& model, const std::string& text);
-    std::vector<GeminiEmbedding> batchEmbedContents(const std::string& model, const std::vector<std::string>& texts);
+    Result<GeminiEmbedding> embedContent(const std::string& model, const std::string& text);
+    Result<std::vector<GeminiEmbedding>> batchEmbedContents(const std::string& model, const std::vector<std::string>& texts);
 
     // Token Counting
-    int countTokens(const std::string& model, const std::string& text);
-    int countTokens(const std::string& model, const std::vector<GeminiContent>& contents);
+    Result<int> countTokens(const std::string& model, const std::string& text);
+    Result<int> countTokens(const std::string& model, const std::vector<GeminiContent>& contents);
 
     // Batch API
-    std::string batchGenerateContent(const std::string& model, const std::vector<std::vector<GeminiContent>>& batch_contents);
+    Result<std::string> batchGenerateContent(const std::string& model, const std::vector<std::vector<GeminiContent>>& batch_contents);
 
     // File API
-    GeminiFile uploadFile(const std::string& file_path, const std::string& mime_type);
-    GeminiFile getFile(const std::string& file_name);
-    void deleteFile(const std::string& file_name);
-    std::vector<GeminiFile> listFiles();
+    Result<GeminiFile> uploadFile(const std::string& file_path, const std::string& mime_type);
+    Result<GeminiFile> getFile(const std::string& file_name);
+    Result<void> deleteFile(const std::string& file_name);
+    Result<std::vector<GeminiFile>> listFiles();
 
     // WebSocket Bidirectional Streaming
     void connectBidiStream(const std::string& model);
@@ -77,7 +77,7 @@ public:
     std::vector<Message> getContext() const;
 
 private:
-    std::string callAPI(const std::string& model, const std::vector<Message>& messages, std::optional<float> temperature = std::nullopt);
+    Result<std::string> callAPI(const std::string& model, const std::vector<Message>& messages, std::optional<float> temperature = std::nullopt);
     std::vector<GeminiContent> messagesToContents(const std::vector<Message>& messages);
     std::vector<Message> contentsToMessages(const std::vector<GeminiContent>& contents);
     std::map<std::string, std::string> getAuthHeaders();

@@ -12,20 +12,24 @@ OAuthManager::OAuthManager(const OAuthConfig& config)
         token_.expires_at = config_.expires_at;
     }
     if (isTokenExpired() && !config_.refresh_token.empty()) {
-        refreshToken();
+        auto result = refreshToken();
+        (void)result;
     }
 }
 
 OAuthManager::~OAuthManager() = default;
 
-std::string OAuthManager::getAccessToken() {
+Result<std::string> OAuthManager::getAccessToken() {
     if (isTokenExpired() && !config_.refresh_token.empty()) {
-        refreshToken();
+        auto result = refreshToken();
+        if (!result) {
+            return std::unexpected(result.error());
+        }
     }
     return token_.access_token;
 }
 
-void OAuthManager::refreshToken() {
+Result<void> OAuthManager::refreshToken() {
     std::string body = "client_id=" + config_.client_id +
                       "&client_secret=" + config_.client_secret +
                       "&refresh_token=" + config_.refresh_token +
@@ -35,16 +39,27 @@ void OAuthManager::refreshToken() {
         {"Content-Type", "application/x-www-form-urlencoded"}
     };
 
-    std::string response = http_client_->post(config_.token_uri, body, headers);
-    nlohmann::json json_response = nlohmann::json::parse(response);
+    auto response_result = http_client_->post(config_.token_uri, body, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
-    token_.access_token = json_response["access_token"].get<std::string>();
-    int expires_in = json_response["expires_in"].get<int>();
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
 
-    auto now = std::chrono::system_clock::now();
-    auto expires_at = now + std::chrono::seconds(expires_in - 60);
-    token_.expires_at = std::chrono::duration_cast<std::chrono::seconds>(
-        expires_at.time_since_epoch()).count();
+        token_.access_token = json_response["access_token"].get<std::string>();
+        int expires_in = json_response["expires_in"].get<int>();
+
+        auto now = std::chrono::system_clock::now();
+        auto expires_at = now + std::chrono::seconds(expires_in - 60);
+        token_.expires_at = std::chrono::duration_cast<std::chrono::seconds>(
+            expires_at.time_since_epoch()).count();
+    } catch (const std::exception& e) {
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse OAuth token response: ") + e.what()));
+    }
+
+    return {};
 }
 
 bool OAuthManager::isTokenExpired() const {

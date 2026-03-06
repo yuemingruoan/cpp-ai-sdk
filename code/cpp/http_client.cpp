@@ -19,11 +19,11 @@ public:
 HttpClient::HttpClient() : impl_(new Impl()) {}
 HttpClient::~HttpClient() { delete impl_; }
 
-std::string HttpClient::post(const std::string& url,
-                              const std::string& body,
-                              const std::map<std::string, std::string>& headers) {
+Result<std::string> HttpClient::post(const std::string& url,
+                                     const std::string& body,
+                                     const std::map<std::string, std::string>& headers) {
     CURL* curl = curl_easy_init();
-    if (!curl) throw NetworkException("Failed to initialize CURL");
+    if (!curl) return std::unexpected(makeNetworkError("Failed to initialize CURL"));
 
     std::string response;
     struct curl_slist* header_list = nullptr;
@@ -46,30 +46,33 @@ std::string HttpClient::post(const std::string& url,
     curl_easy_cleanup(curl);
 
     if (res != CURLE_OK) {
-        throw NetworkException(std::string("CURL error: ") + curl_easy_strerror(res));
+        return std::unexpected(makeNetworkError(
+            std::string("CURL error: ") + curl_easy_strerror(res)));
     }
 
     if (http_code >= 400) {
-        throw APIException("HTTP error: " + response, http_code);
+        return std::unexpected(makeApiError("HTTP error: " + response,
+                                            static_cast<int>(http_code)));
     }
 
     return response;
 }
 
-std::future<std::string> HttpClient::postAsync(const std::string& url,
-                                                const std::string& body,
-                                                const std::map<std::string, std::string>& headers) {
+std::future<Result<std::string>> HttpClient::postAsync(
+    const std::string& url,
+    const std::string& body,
+    const std::map<std::string, std::string>& headers) {
     return std::async(std::launch::async, [this, url, body, headers]() {
         return post(url, body, headers);
     });
 }
 
-void HttpClient::postStream(const std::string& url,
-                             const std::string& body,
-                             const std::map<std::string, std::string>& headers,
-                             StreamCallback callback) {
+Result<void> HttpClient::postStream(const std::string& url,
+                                    const std::string& body,
+                                    const std::map<std::string, std::string>& headers,
+                                    StreamCallback callback) {
     CURL* curl = curl_easy_init();
-    if (!curl) throw NetworkException("Failed to initialize CURL");
+    if (!curl) return std::unexpected(makeNetworkError("Failed to initialize CURL"));
 
     struct curl_slist* header_list = nullptr;
     for (const auto& [key, value] : headers) {
@@ -94,16 +97,20 @@ void HttpClient::postStream(const std::string& url,
     curl_easy_cleanup(curl);
 
     if (res != CURLE_OK) {
-        throw NetworkException(std::string("CURL error: ") + curl_easy_strerror(res));
+        return std::unexpected(makeNetworkError(
+            std::string("CURL error: ") + curl_easy_strerror(res)));
     }
+
+    return {};
 }
 
-std::string HttpClient::postMultipart(const std::string& url,
-                                       const std::map<std::string, std::string>& fields,
-                                       const std::map<std::string, std::string>& files,
-                                       const std::map<std::string, std::string>& headers) {
+Result<std::string> HttpClient::postMultipart(
+    const std::string& url,
+    const std::map<std::string, std::string>& fields,
+    const std::map<std::string, std::string>& files,
+    const std::map<std::string, std::string>& headers) {
     CURL* curl = curl_easy_init();
-    if (!curl) throw NetworkException("Failed to initialize CURL");
+    if (!curl) return std::unexpected(makeNetworkError("Failed to initialize CURL"));
 
     std::string response;
     curl_mime* mime = curl_mime_init(curl);
@@ -140,11 +147,13 @@ std::string HttpClient::postMultipart(const std::string& url,
     curl_easy_cleanup(curl);
 
     if (res != CURLE_OK) {
-        throw NetworkException(std::string("CURL error: ") + curl_easy_strerror(res));
+        return std::unexpected(makeNetworkError(
+            std::string("CURL error: ") + curl_easy_strerror(res)));
     }
 
     if (http_code >= 400) {
-        throw APIException("HTTP error: " + response, http_code);
+        return std::unexpected(makeApiError("HTTP error: " + response,
+                                            static_cast<int>(http_code)));
     }
 
     return response;
@@ -157,11 +166,12 @@ static size_t WriteBinaryCallback(void* contents, size_t size, size_t nmemb, voi
     return total_size;
 }
 
-std::vector<uint8_t> HttpClient::postBinary(const std::string& url,
-                                             const std::string& body,
-                                             const std::map<std::string, std::string>& headers) {
+Result<std::vector<uint8_t>> HttpClient::postBinary(
+    const std::string& url,
+    const std::string& body,
+    const std::map<std::string, std::string>& headers) {
     CURL* curl = curl_easy_init();
-    if (!curl) throw NetworkException("Failed to initialize CURL");
+    if (!curl) return std::unexpected(makeNetworkError("Failed to initialize CURL"));
 
     std::vector<uint8_t> response;
     struct curl_slist* header_list = nullptr;
@@ -184,20 +194,23 @@ std::vector<uint8_t> HttpClient::postBinary(const std::string& url,
     curl_easy_cleanup(curl);
 
     if (res != CURLE_OK) {
-        throw NetworkException(std::string("CURL error: ") + curl_easy_strerror(res));
+        return std::unexpected(makeNetworkError(
+            std::string("CURL error: ") + curl_easy_strerror(res)));
     }
 
     if (http_code >= 400) {
-        throw APIException("HTTP error", http_code);
+        return std::unexpected(
+            makeApiError("HTTP error", static_cast<int>(http_code)));
     }
 
     return response;
 }
 
-std::string HttpClient::get(const std::string& url,
-                             const std::map<std::string, std::string>& headers) {
+Result<std::string> HttpClient::get(
+    const std::string& url,
+    const std::map<std::string, std::string>& headers) {
     CURL* curl = curl_easy_init();
-    if (!curl) throw NetworkException("Failed to initialize CURL");
+    if (!curl) return std::unexpected(makeNetworkError("Failed to initialize CURL"));
 
     std::string response;
     struct curl_slist* header_list = nullptr;
@@ -219,20 +232,23 @@ std::string HttpClient::get(const std::string& url,
     curl_easy_cleanup(curl);
 
     if (res != CURLE_OK) {
-        throw NetworkException(std::string("CURL error: ") + curl_easy_strerror(res));
+        return std::unexpected(makeNetworkError(
+            std::string("CURL error: ") + curl_easy_strerror(res)));
     }
 
     if (http_code >= 400) {
-        throw APIException("HTTP error: " + response, http_code);
+        return std::unexpected(makeApiError("HTTP error: " + response,
+                                            static_cast<int>(http_code)));
     }
 
     return response;
 }
 
-void HttpClient::deleteRequest(const std::string& url,
-                                const std::map<std::string, std::string>& headers) {
+Result<void> HttpClient::deleteRequest(
+    const std::string& url,
+    const std::map<std::string, std::string>& headers) {
     CURL* curl = curl_easy_init();
-    if (!curl) throw NetworkException("Failed to initialize CURL");
+    if (!curl) return std::unexpected(makeNetworkError("Failed to initialize CURL"));
 
     std::string response;
     struct curl_slist* header_list = nullptr;
@@ -255,12 +271,16 @@ void HttpClient::deleteRequest(const std::string& url,
     curl_easy_cleanup(curl);
 
     if (res != CURLE_OK) {
-        throw NetworkException(std::string("CURL error: ") + curl_easy_strerror(res));
+        return std::unexpected(makeNetworkError(
+            std::string("CURL error: ") + curl_easy_strerror(res)));
     }
 
     if (http_code >= 400) {
-        throw APIException("HTTP error: " + response, http_code);
+        return std::unexpected(makeApiError("HTTP error: " + response,
+                                            static_cast<int>(http_code)));
     }
+
+    return {};
 }
 
 } // namespace ai_sdk

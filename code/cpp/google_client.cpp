@@ -41,7 +41,12 @@ GoogleClient::~GoogleClient() = default;
 std::map<std::string, std::string> GoogleClient::getAuthHeaders() {
     std::map<std::string, std::string> headers = {{"Content-Type", "application/json"}};
     if (use_oauth_) {
-        headers["Authorization"] = "Bearer " + oauth_manager_->getAccessToken();
+        auto token_result = oauth_manager_->getAccessToken();
+        if (token_result) {
+            headers["Authorization"] = "Bearer " + token_result.value();
+        }
+        // If token retrieval failed, we leave headers without Authorization;
+        // the subsequent HTTP call will likely fail and propagate that error.
     } else {
         headers["x-goog-api-key"] = api_key_;
     }
@@ -87,7 +92,9 @@ std::vector<Message> GoogleClient::getContext() const {
     return {};
 }
 
-std::string GoogleClient::callAPI(const std::string& model, const std::vector<Message>& messages, std::optional<float> temperature) {
+Result<std::string> GoogleClient::callAPI(const std::string& model,
+                                          const std::vector<Message>& messages,
+                                          std::optional<float> temperature) {
     auto contents = messagesToContents(messages);
 
     GeminiRequest request;
@@ -102,53 +109,70 @@ std::string GoogleClient::callAPI(const std::string& model, const std::vector<Me
     auto headers = getAuthHeaders();
 
     std::string url = config_.base_url + "/models/" + model + ":generateContent";
-    std::string response = http_client_->post(url, json_body.dump(), headers);
+    auto response_result = http_client_->post(url, json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
-    nlohmann::json json_response = nlohmann::json::parse(response);
-    GeminiResponse gemini_response = json_response;
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        GeminiResponse gemini_response = json_response;
 
-    if (!gemini_response.candidates.empty() && !gemini_response.candidates[0].content.parts.empty()) {
-        if (gemini_response.candidates[0].content.parts[0].text) {
+        if (!gemini_response.candidates.empty() &&
+            !gemini_response.candidates[0].content.parts.empty() &&
+            gemini_response.candidates[0].content.parts[0].text) {
             return *gemini_response.candidates[0].content.parts[0].text;
         }
+        return std::unexpected(
+            makeParseError("Failed to parse response: missing candidate text"));
+    } catch (const std::exception& e) {
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
-    return "";
 }
 
-std::string GoogleClient::chat(const std::string& message) {
+Result<std::string> GoogleClient::chat(const std::string& message) {
     return chat(config_.default_model, message, config_.default_temperature);
 }
 
-std::string GoogleClient::chat(const std::string& model, const std::string& message) {
+Result<std::string> GoogleClient::chat(const std::string& model, const std::string& message) {
     return chat(model, message, config_.default_temperature);
 }
 
-std::string GoogleClient::chat(const std::string& model, const std::string& message, float temperature) {
+Result<std::string> GoogleClient::chat(const std::string& model,
+                                       const std::string& message,
+                                       float temperature) {
     std::vector<Message> messages;
     if (config_.auto_context && context_) {
         messages = context_->getMessages();
     }
     messages.push_back({"user", message});
 
-    std::string response = callAPI(model, messages, temperature);
+    auto response_result = callAPI(model, messages, temperature);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     if (config_.auto_context && context_) {
         context_->addMessage({"user", message});
-        context_->addMessage({"assistant", response});
+        context_->addMessage({"assistant", response_result.value()});
     }
 
-    return response;
+    return response_result;
 }
 
-std::future<std::string> GoogleClient::chatAsync(const std::string& message) {
+std::future<Result<std::string>> GoogleClient::chatAsync(const std::string& message) {
     return std::async(std::launch::async, [this, message]() { return chat(message); });
 }
 
-std::future<std::string> GoogleClient::chatAsync(const std::string& model, const std::string& message) {
+std::future<Result<std::string>> GoogleClient::chatAsync(const std::string& model,
+                                                         const std::string& message) {
     return std::async(std::launch::async, [this, model, message]() { return chat(model, message); });
 }
 
-GeminiResponse GoogleClient::generateContent(const std::string& model, const std::vector<GeminiContent>& contents) {
+Result<GeminiResponse> GoogleClient::generateContent(
+    const std::string& model,
+    const std::vector<GeminiContent>& contents) {
     GeminiRequest request;
     request.contents = contents;
 
@@ -156,13 +180,25 @@ GeminiResponse GoogleClient::generateContent(const std::string& model, const std
     auto headers = getAuthHeaders();
 
     std::string url = config_.base_url + "/models/" + model + ":generateContent";
-    std::string response = http_client_->post(url, json_body.dump(), headers);
+    auto response_result = http_client_->post(url, json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
-    nlohmann::json json_response = nlohmann::json::parse(response);
-    return json_response;
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        GeminiResponse result = json_response;
+        return result;
+    } catch (const std::exception& e) {
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
+    }
 }
 
-GeminiResponse GoogleClient::generateContent(const std::string& model, const std::vector<GeminiContent>& contents, const GenerationConfig& config) {
+Result<GeminiResponse> GoogleClient::generateContent(
+    const std::string& model,
+    const std::vector<GeminiContent>& contents,
+    const GenerationConfig& config) {
     GeminiRequest request;
     request.contents = contents;
     request.generation_config = config;
@@ -171,17 +207,29 @@ GeminiResponse GoogleClient::generateContent(const std::string& model, const std
     auto headers = getAuthHeaders();
 
     std::string url = config_.base_url + "/models/" + model + ":generateContent";
-    std::string response = http_client_->post(url, json_body.dump(), headers);
+    auto response_result = http_client_->post(url, json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
-    nlohmann::json json_response = nlohmann::json::parse(response);
-    return json_response;
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        GeminiResponse result = json_response;
+        return result;
+    } catch (const std::exception& e) {
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
+    }
 }
 
-void GoogleClient::chatStream(const std::string& message, StreamCallback callback) {
-    chatStream(config_.default_model, message, callback);
+Result<void> GoogleClient::chatStream(const std::string& message,
+                                      StreamCallback callback) {
+    return chatStream(config_.default_model, message, callback);
 }
 
-void GoogleClient::chatStream(const std::string& model, const std::string& message, StreamCallback callback) {
+Result<void> GoogleClient::chatStream(const std::string& model,
+                                      const std::string& message,
+                                      StreamCallback callback) {
     std::vector<Message> messages;
     if (config_.auto_context && context_) {
         messages = context_->getMessages();
@@ -189,10 +237,12 @@ void GoogleClient::chatStream(const std::string& model, const std::string& messa
     messages.push_back({"user", message});
 
     auto contents = messagesToContents(messages);
-    streamGenerateContent(model, contents, callback);
+    return streamGenerateContent(model, contents, callback);
 }
 
-void GoogleClient::streamGenerateContent(const std::string& model, const std::vector<GeminiContent>& contents, StreamCallback callback) {
+Result<void> GoogleClient::streamGenerateContent(const std::string& model,
+                                                 const std::vector<GeminiContent>& contents,
+                                                 StreamCallback callback) {
     GeminiRequest request;
     request.contents = contents;
 
@@ -201,12 +251,18 @@ void GoogleClient::streamGenerateContent(const std::string& model, const std::ve
 
     std::string url = config_.base_url + "/models/" + model + ":streamGenerateContent?alt=sse";
 
-    // Note: Streaming requires SSE support in HttpClient
-    std::string response = http_client_->post(url, json_body.dump(), headers);
-    callback(response);
+    // Note: Streaming ideally uses SSE; here we just forward the response body.
+    auto response_result = http_client_->post(url, json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
+
+    callback(response_result.value());
+    return {};
 }
 
-GeminiEmbedding GoogleClient::embedContent(const std::string& model, const std::string& text) {
+Result<GeminiEmbedding> GoogleClient::embedContent(const std::string& model,
+                                                   const std::string& text) {
     nlohmann::json json_body = {
         {"model", "models/" + model},
         {"content", {{"parts", {{{"text", text}}}}}}
@@ -215,13 +271,24 @@ GeminiEmbedding GoogleClient::embedContent(const std::string& model, const std::
     auto headers = getAuthHeaders();
 
     std::string url = config_.base_url + "/models/" + model + ":embedContent";
-    std::string response = http_client_->post(url, json_body.dump(), headers);
+    auto response_result = http_client_->post(url, json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
-    nlohmann::json json_response = nlohmann::json::parse(response);
-    return json_response["embedding"];
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        GeminiEmbedding embedding = json_response["embedding"];
+        return embedding;
+    } catch (const std::exception& e) {
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
+    }
 }
 
-std::vector<GeminiEmbedding> GoogleClient::batchEmbedContents(const std::string& model, const std::vector<std::string>& texts) {
+Result<std::vector<GeminiEmbedding>> GoogleClient::batchEmbedContents(
+    const std::string& model,
+    const std::vector<std::string>& texts) {
     nlohmann::json requests = nlohmann::json::array();
     for (const auto& text : texts) {
         requests.push_back({
@@ -234,17 +301,25 @@ std::vector<GeminiEmbedding> GoogleClient::batchEmbedContents(const std::string&
     auto headers = getAuthHeaders();
 
     std::string url = config_.base_url + "/models/" + model + ":batchEmbedContents";
-    std::string response = http_client_->post(url, json_body.dump(), headers);
-
-    nlohmann::json json_response = nlohmann::json::parse(response);
-    std::vector<GeminiEmbedding> embeddings;
-    for (const auto& emb : json_response["embeddings"]) {
-        embeddings.push_back(emb);
+    auto response_result = http_client_->post(url, json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
     }
-    return embeddings;
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        std::vector<GeminiEmbedding> embeddings;
+        for (const auto& emb : json_response["embeddings"]) {
+            embeddings.push_back(emb);
+        }
+        return embeddings;
+    } catch (const std::exception& e) {
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
+    }
 }
 
-int GoogleClient::countTokens(const std::string& model, const std::string& text) {
+Result<int> GoogleClient::countTokens(const std::string& model, const std::string& text) {
     nlohmann::json json_body;
     json_body["contents"] = nlohmann::json::array();
     json_body["contents"][0]["parts"] = nlohmann::json::array();
@@ -253,25 +328,44 @@ int GoogleClient::countTokens(const std::string& model, const std::string& text)
     auto headers = getAuthHeaders();
 
     std::string url = config_.base_url + "/models/" + model + ":countTokens";
-    std::string response = http_client_->post(url, json_body.dump(), headers);
+    auto response_result = http_client_->post(url, json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
-    nlohmann::json json_response = nlohmann::json::parse(response);
-    return json_response["totalTokens"].get<int>();
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        return json_response["totalTokens"].get<int>();
+    } catch (const std::exception& e) {
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
+    }
 }
 
-int GoogleClient::countTokens(const std::string& model, const std::vector<GeminiContent>& contents) {
+Result<int> GoogleClient::countTokens(const std::string& model,
+                                      const std::vector<GeminiContent>& contents) {
     nlohmann::json json_body = {{"contents", contents}};
 
     auto headers = getAuthHeaders();
 
     std::string url = config_.base_url + "/models/" + model + ":countTokens";
-    std::string response = http_client_->post(url, json_body.dump(), headers);
+    auto response_result = http_client_->post(url, json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
-    nlohmann::json json_response = nlohmann::json::parse(response);
-    return json_response["totalTokens"].get<int>();
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        return json_response["totalTokens"].get<int>();
+    } catch (const std::exception& e) {
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
+    }
 }
 
-std::string GoogleClient::batchGenerateContent(const std::string& model, const std::vector<std::vector<GeminiContent>>& batch_contents) {
+Result<std::string> GoogleClient::batchGenerateContent(
+    const std::string& model,
+    const std::vector<std::vector<GeminiContent>>& batch_contents) {
     nlohmann::json requests = nlohmann::json::array();
     for (const auto& contents : batch_contents) {
         requests.push_back({{"contents", contents}});
@@ -284,66 +378,109 @@ std::string GoogleClient::batchGenerateContent(const std::string& model, const s
     return http_client_->post(url, json_body.dump(), headers);
 }
 
-GeminiFile GoogleClient::uploadFile(const std::string& file_path, const std::string& mime_type) {
+Result<GeminiFile> GoogleClient::uploadFile(const std::string& file_path,
+                                            const std::string& mime_type) {
     std::map<std::string, std::string> fields = {{"mimeType", mime_type}};
     std::map<std::string, std::string> files = {{"file", file_path}};
     std::map<std::string, std::string> headers;
     if (use_oauth_) {
-        headers["Authorization"] = "Bearer " + oauth_manager_->getAccessToken();
-    } else {
-        headers["x-goog-api-key"] = api_key_;
-    }
-
-    std::string url = config_.base_url + "/files";
-    std::string response = http_client_->postMultipart(url, fields, files, headers);
-
-    nlohmann::json json_response = nlohmann::json::parse(response);
-    return json_response["file"];
-}
-
-GeminiFile GoogleClient::getFile(const std::string& file_name) {
-    std::map<std::string, std::string> headers;
-    if (use_oauth_) {
-        headers["Authorization"] = "Bearer " + oauth_manager_->getAccessToken();
-    } else {
-        headers["x-goog-api-key"] = api_key_;
-    }
-    std::string url = config_.base_url + "/" + file_name;
-    std::string response = http_client_->get(url, headers);
-
-    nlohmann::json json_response = nlohmann::json::parse(response);
-    return json_response;
-}
-
-void GoogleClient::deleteFile(const std::string& file_name) {
-    std::map<std::string, std::string> headers;
-    if (use_oauth_) {
-        headers["Authorization"] = "Bearer " + oauth_manager_->getAccessToken();
-    } else {
-        headers["x-goog-api-key"] = api_key_;
-    }
-    std::string url = config_.base_url + "/" + file_name;
-    http_client_->deleteRequest(url, headers);
-}
-
-std::vector<GeminiFile> GoogleClient::listFiles() {
-    std::map<std::string, std::string> headers;
-    if (use_oauth_) {
-        headers["Authorization"] = "Bearer " + oauth_manager_->getAccessToken();
-    } else {
-        headers["x-goog-api-key"] = api_key_;
-    }
-    std::string url = config_.base_url + "/files";
-    std::string response = http_client_->get(url, headers);
-
-    nlohmann::json json_response = nlohmann::json::parse(response);
-    std::vector<GeminiFile> files;
-    if (json_response.contains("files")) {
-        for (const auto& file : json_response["files"]) {
-            files.push_back(file);
+        auto token_result = oauth_manager_->getAccessToken();
+        if (token_result) {
+            headers["Authorization"] = "Bearer " + token_result.value();
         }
+    } else {
+        headers["x-goog-api-key"] = api_key_;
     }
-    return files;
+
+    std::string url = config_.base_url + "/files";
+    auto response_result = http_client_->postMultipart(url, fields, files, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        GeminiFile file = json_response["file"];
+        return file;
+    } catch (const std::exception& e) {
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
+    }
+}
+
+Result<GeminiFile> GoogleClient::getFile(const std::string& file_name) {
+    std::map<std::string, std::string> headers;
+    if (use_oauth_) {
+        auto token_result = oauth_manager_->getAccessToken();
+        if (token_result) {
+            headers["Authorization"] = "Bearer " + token_result.value();
+        }
+    } else {
+        headers["x-goog-api-key"] = api_key_;
+    }
+    std::string url = config_.base_url + "/" + file_name;
+    auto response_result = http_client_->get(url, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        GeminiFile file = json_response;
+        return file;
+    } catch (const std::exception& e) {
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
+    }
+}
+
+Result<void> GoogleClient::deleteFile(const std::string& file_name) {
+    std::map<std::string, std::string> headers;
+    if (use_oauth_) {
+        auto token_result = oauth_manager_->getAccessToken();
+        if (token_result) {
+            headers["Authorization"] = "Bearer " + token_result.value();
+        }
+    } else {
+        headers["x-goog-api-key"] = api_key_;
+    }
+    std::string url = config_.base_url + "/" + file_name;
+    auto result = http_client_->deleteRequest(url, headers);
+    if (!result) {
+        return std::unexpected(result.error());
+    }
+    return {};
+}
+
+Result<std::vector<GeminiFile>> GoogleClient::listFiles() {
+    std::map<std::string, std::string> headers;
+    if (use_oauth_) {
+        auto token_result = oauth_manager_->getAccessToken();
+        if (token_result) {
+            headers["Authorization"] = "Bearer " + token_result.value();
+        }
+    } else {
+        headers["x-goog-api-key"] = api_key_;
+    }
+    std::string url = config_.base_url + "/files";
+    auto response_result = http_client_->get(url, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
+
+    try {
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        std::vector<GeminiFile> files;
+        if (json_response.contains("files")) {
+            for (const auto& file : json_response["files"]) {
+                files.push_back(file);
+            }
+        }
+        return files;
+    } catch (const std::exception& e) {
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
+    }
 }
 
 void GoogleClient::connectBidiStream(const std::string& model) {

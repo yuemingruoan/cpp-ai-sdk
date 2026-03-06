@@ -9,17 +9,15 @@ int main() {
         return 1;
     }
 
-    try {
-        ai_sdk::GoogleClient client(api_key);
+    ai_sdk::GoogleClient client(api_key);
 
-        std::cout << "Google Gemini Chat Example" << std::endl;
-        std::cout << "=========================" << std::endl;
+    std::cout << "Google Gemini Chat Example" << std::endl;
+    std::cout << "=========================" << std::endl;
 
-        std::string response = client.chat("Hello! Tell me a short joke.");
-        std::cout << "Response: " << response << std::endl;
-
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+    if (auto response = client.chat("Hello! Tell me a short joke.")) {
+        std::cout << "Response: " << response.value() << std::endl;
+    } else {
+        std::cerr << "Error: " << response.error().message << std::endl;
         return 1;
     }
 

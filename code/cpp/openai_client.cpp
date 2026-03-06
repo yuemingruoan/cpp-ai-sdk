@@ -27,9 +27,10 @@ OpenAIClient::OpenAIClient(const std::string& api_key, const ClientConfig& confi
 
 OpenAIClient::~OpenAIClient() = default;
 
-std::string OpenAIClient::callAPI(const std::string& model,
-                                   const std::vector<Message>& messages,
-                                   std::optional<float> temperature) {
+Result<std::string> OpenAIClient::callAPI(
+    const std::string& model,
+    const std::vector<Message>& messages,
+    std::optional<float> temperature) {
     ChatRequest request;
     request.model = model;
     request.messages = messages;
@@ -43,26 +44,37 @@ std::string OpenAIClient::callAPI(const std::string& model,
         {"Authorization", "Bearer " + api_key_}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/chat/completions", body, headers);
+    auto response_result =
+        http_client_->post(config_.base_url + "/chat/completions", body, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
         ChatResponse chat_response = json_response;
-        return chat_response.choices[0].message.content;
+        if (!chat_response.choices.empty()) {
+            return chat_response.choices[0].message.content;
+        }
+        return std::unexpected(
+            makeParseError("Failed to parse response: empty choices array"));
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-std::string OpenAIClient::chat(const std::string& message) {
+Result<std::string> OpenAIClient::chat(const std::string& message) {
     return chat(config_.default_model, message, config_.default_temperature);
 }
 
-std::string OpenAIClient::chat(const std::string& model, const std::string& message) {
+Result<std::string> OpenAIClient::chat(const std::string& model, const std::string& message) {
     return chat(model, message, config_.default_temperature);
 }
 
-std::string OpenAIClient::chat(const std::string& model, const std::string& message, float temperature) {
+Result<std::string> OpenAIClient::chat(const std::string& model,
+                                       const std::string& message,
+                                       float temperature) {
     std::vector<Message> messages;
 
     if (config_.auto_context && context_) {
@@ -70,37 +82,46 @@ std::string OpenAIClient::chat(const std::string& model, const std::string& mess
     }
 
     messages.push_back({"user", message});
-    std::string response = callAPI(model, messages, temperature);
+    auto response_result = callAPI(model, messages, temperature);
+
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     if (config_.auto_context && context_) {
         context_->addMessage({"user", message});
-        context_->addMessage({"assistant", response});
+        context_->addMessage({"assistant", response_result.value()});
     }
 
-    return response;
+    return response_result;
 }
 
-std::string OpenAIClient::chat(const std::string& model, const std::vector<Message>& messages) {
+Result<std::string> OpenAIClient::chat(const std::string& model,
+                                       const std::vector<Message>& messages) {
     return callAPI(model, messages, config_.default_temperature);
 }
 
-std::future<std::string> OpenAIClient::chatAsync(const std::string& message) {
+std::future<Result<std::string>> OpenAIClient::chatAsync(const std::string& message) {
     return std::async(std::launch::async, [this, message]() {
         return chat(message);
     });
 }
 
-std::future<std::string> OpenAIClient::chatAsync(const std::string& model, const std::string& message) {
+std::future<Result<std::string>> OpenAIClient::chatAsync(const std::string& model,
+                                                         const std::string& message) {
     return std::async(std::launch::async, [this, model, message]() {
         return chat(model, message);
     });
 }
 
-void OpenAIClient::chatStream(const std::string& message, StreamCallback callback) {
-    chatStream(config_.default_model, message, callback);
+Result<void> OpenAIClient::chatStream(const std::string& message,
+                                      StreamCallback callback) {
+    return chatStream(config_.default_model, message, callback);
 }
 
-void OpenAIClient::chatStream(const std::string& model, const std::string& message, StreamCallback callback) {
+Result<void> OpenAIClient::chatStream(const std::string& model,
+                                      const std::string& message,
+                                      StreamCallback callback) {
     std::vector<Message> messages;
     if (config_.auto_context && context_) {
         messages = context_->getMessages();
@@ -118,27 +139,35 @@ void OpenAIClient::chatStream(const std::string& model, const std::string& messa
         {"Authorization", "Bearer " + api_key_}
     };
 
-    http_client_->postStream(config_.base_url + "/chat/completions", json_body.dump(), headers, callback);
+    return http_client_->postStream(
+        config_.base_url + "/chat/completions", json_body.dump(), headers, callback);
 }
 
-ChatResponse OpenAIClient::chatCompletion(const ChatRequest& request) {
+Result<ChatResponse> OpenAIClient::chatCompletion(const ChatRequest& request) {
     nlohmann::json json_body = request;
     std::map<std::string, std::string> headers = {
         {"Content-Type", "application/json"},
         {"Authorization", "Bearer " + api_key_}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/chat/completions", json_body.dump(), headers);
+    auto response_result =
+        http_client_->post(config_.base_url + "/chat/completions", json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        ChatResponse result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-std::future<ChatResponse> OpenAIClient::chatCompletionAsync(const ChatRequest& request) {
+std::future<Result<ChatResponse>> OpenAIClient::chatCompletionAsync(
+    const ChatRequest& request) {
     return std::async(std::launch::async, [this, request]() {
         return chatCompletion(request);
     });
@@ -157,54 +186,71 @@ std::vector<Message> OpenAIClient::getContext() const {
     return {};
 }
 
-EmbeddingResponse OpenAIClient::createEmbedding(const EmbeddingRequest& request) {
+Result<EmbeddingResponse> OpenAIClient::createEmbedding(const EmbeddingRequest& request) {
     nlohmann::json json_body = request;
     std::map<std::string, std::string> headers = {
         {"Content-Type", "application/json"},
         {"Authorization", "Bearer " + api_key_}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/embeddings", json_body.dump(), headers);
+    auto response_result =
+        http_client_->post(config_.base_url + "/embeddings", json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        EmbeddingResponse result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-EmbeddingResponse OpenAIClient::createEmbedding(const std::string& model, const std::vector<std::string>& input) {
+Result<EmbeddingResponse> OpenAIClient::createEmbedding(
+    const std::string& model,
+    const std::vector<std::string>& input) {
     EmbeddingRequest request;
     request.model = model;
     request.input = input;
     return createEmbedding(request);
 }
 
-ModelsResponse OpenAIClient::listModels() {
+Result<ModelsResponse> OpenAIClient::listModels() {
     std::map<std::string, std::string> headers = {
         {"Authorization", "Bearer " + api_key_}
     };
 
-    std::string response = http_client_->get(config_.base_url + "/models", headers);
+    auto response_result = http_client_->get(config_.base_url + "/models", headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        ModelsResponse result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-Model OpenAIClient::retrieveModel(const std::string& model_id) {
+Result<Model> OpenAIClient::retrieveModel(const std::string& model_id) {
     std::map<std::string, std::string> headers = {
         {"Authorization", "Bearer " + api_key_}
     };
 
-    std::string response = http_client_->get(config_.base_url + "/models/" + model_id, headers);
+    auto response_result =
+        http_client_->get(config_.base_url + "/models/" + model_id, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
         Model model;
         json_response.at("id").get_to(model.id);
         json_response.at("object").get_to(model.object);
@@ -212,57 +258,71 @@ Model OpenAIClient::retrieveModel(const std::string& model_id) {
         json_response.at("owned_by").get_to(model.owned_by);
         return model;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-ModerationResponse OpenAIClient::createModeration(const ModerationRequest& request) {
+Result<ModerationResponse> OpenAIClient::createModeration(
+    const ModerationRequest& request) {
     nlohmann::json json_body = request;
     std::map<std::string, std::string> headers = {
         {"Content-Type", "application/json"},
         {"Authorization", "Bearer " + api_key_}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/moderations", json_body.dump(), headers);
+    auto response_result =
+        http_client_->post(config_.base_url + "/moderations", json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        ModerationResponse result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-ModerationResponse OpenAIClient::createModeration(const std::string& input) {
+Result<ModerationResponse> OpenAIClient::createModeration(const std::string& input) {
     ModerationRequest request;
     request.input = input;
     return createModeration(request);
 }
 
-ImageResponse OpenAIClient::createImage(const ImageGenerationRequest& request) {
+Result<ImageResponse> OpenAIClient::createImage(const ImageGenerationRequest& request) {
     nlohmann::json json_body = request;
     std::map<std::string, std::string> headers = {
         {"Content-Type", "application/json"},
         {"Authorization", "Bearer " + api_key_}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/images/generations", json_body.dump(), headers);
+    auto response_result = http_client_->post(
+        config_.base_url + "/images/generations", json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        ImageResponse result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-ImageResponse OpenAIClient::createImage(const std::string& prompt) {
+Result<ImageResponse> OpenAIClient::createImage(const std::string& prompt) {
     ImageGenerationRequest request;
     request.prompt = prompt;
     return createImage(request);
 }
 
-ImageResponse OpenAIClient::editImage(const ImageEditRequest& request) {
+Result<ImageResponse> OpenAIClient::editImage(const ImageEditRequest& request) {
     std::map<std::string, std::string> fields = {{"prompt", request.prompt}};
     if (request.model) fields["model"] = *request.model;
     if (request.n) fields["n"] = std::to_string(*request.n);
@@ -273,17 +333,23 @@ ImageResponse OpenAIClient::editImage(const ImageEditRequest& request) {
 
     std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
 
-    std::string response = http_client_->postMultipart(config_.base_url + "/images/edits", fields, files, headers);
+    auto response_result = http_client_->postMultipart(
+        config_.base_url + "/images/edits", fields, files, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        ImageResponse result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-ImageResponse OpenAIClient::createImageVariation(const ImageVariationRequest& request) {
+Result<ImageResponse> OpenAIClient::createImageVariation(const ImageVariationRequest& request) {
     std::map<std::string, std::string> fields;
     if (request.model) fields["model"] = *request.model;
     if (request.n) fields["n"] = std::to_string(*request.n);
@@ -292,204 +358,288 @@ ImageResponse OpenAIClient::createImageVariation(const ImageVariationRequest& re
     std::map<std::string, std::string> files = {{"image", request.image_path}};
     std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
 
-    std::string response = http_client_->postMultipart(config_.base_url + "/images/variations", fields, files, headers);
+    auto response_result = http_client_->postMultipart(
+        config_.base_url + "/images/variations", fields, files, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        ImageResponse result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-CompletionResponse OpenAIClient::createCompletion(const CompletionRequest& request) {
+Result<CompletionResponse> OpenAIClient::createCompletion(
+    const CompletionRequest& request) {
     nlohmann::json json_body = request;
     std::map<std::string, std::string> headers = {
         {"Content-Type", "application/json"},
         {"Authorization", "Bearer " + api_key_}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/completions", json_body.dump(), headers);
+    auto response_result =
+        http_client_->post(config_.base_url + "/completions", json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        CompletionResponse result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-CompletionResponse OpenAIClient::createCompletion(const std::string& model, const std::string& prompt) {
+Result<CompletionResponse> OpenAIClient::createCompletion(const std::string& model,
+                                                          const std::string& prompt) {
     CompletionRequest request;
     request.model = model;
     request.prompt = prompt;
     return createCompletion(request);
 }
 
-FileObject OpenAIClient::uploadFile(const std::string& file_path, const std::string& purpose) {
+Result<FileObject> OpenAIClient::uploadFile(const std::string& file_path,
+                                            const std::string& purpose) {
     std::map<std::string, std::string> fields = {{"purpose", purpose}};
     std::map<std::string, std::string> files = {{"file", file_path}};
     std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
 
-    std::string response = http_client_->postMultipart(config_.base_url + "/files", fields, files, headers);
+    auto response_result = http_client_->postMultipart(
+        config_.base_url + "/files", fields, files, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        FileObject result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-FileListResponse OpenAIClient::listFiles() {
+Result<FileListResponse> OpenAIClient::listFiles() {
     std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
-    std::string response = http_client_->get(config_.base_url + "/files", headers);
+    auto response_result = http_client_->get(config_.base_url + "/files", headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        FileListResponse result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-FileObject OpenAIClient::retrieveFile(const std::string& file_id) {
+Result<FileObject> OpenAIClient::retrieveFile(const std::string& file_id) {
     std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
-    std::string response = http_client_->get(config_.base_url + "/files/" + file_id, headers);
+    auto response_result =
+        http_client_->get(config_.base_url + "/files/" + file_id, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        FileObject result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-void OpenAIClient::deleteFile(const std::string& file_id) {
+Result<void> OpenAIClient::deleteFile(const std::string& file_id) {
     std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
-    http_client_->deleteRequest(config_.base_url + "/files/" + file_id, headers);
+    auto result =
+        http_client_->deleteRequest(config_.base_url + "/files/" + file_id, headers);
+    if (!result) {
+        return std::unexpected(result.error());
+    }
+    return {};
 }
 
-std::string OpenAIClient::retrieveFileContent(const std::string& file_id) {
+Result<std::string> OpenAIClient::retrieveFileContent(const std::string& file_id) {
     std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
     return http_client_->get(config_.base_url + "/files/" + file_id + "/content", headers);
 }
 
-BatchObject OpenAIClient::createBatch(const BatchRequest& request) {
+Result<BatchObject> OpenAIClient::createBatch(const BatchRequest& request) {
     nlohmann::json json_body = request;
     std::map<std::string, std::string> headers = {
         {"Content-Type", "application/json"},
         {"Authorization", "Bearer " + api_key_}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/batches", json_body.dump(), headers);
+    auto response_result =
+        http_client_->post(config_.base_url + "/batches", json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        BatchObject result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-BatchObject OpenAIClient::retrieveBatch(const std::string& batch_id) {
+Result<BatchObject> OpenAIClient::retrieveBatch(const std::string& batch_id) {
     std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
-    std::string response = http_client_->get(config_.base_url + "/batches/" + batch_id, headers);
+    auto response_result =
+        http_client_->get(config_.base_url + "/batches/" + batch_id, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        BatchObject result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-BatchObject OpenAIClient::cancelBatch(const std::string& batch_id) {
+Result<BatchObject> OpenAIClient::cancelBatch(const std::string& batch_id) {
     std::map<std::string, std::string> headers = {
         {"Content-Type", "application/json"},
         {"Authorization", "Bearer " + api_key_}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/batches/" + batch_id + "/cancel", "", headers);
+    auto response_result = http_client_->post(
+        config_.base_url + "/batches/" + batch_id + "/cancel", "", headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        BatchObject result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-BatchListResponse OpenAIClient::listBatches() {
+Result<BatchListResponse> OpenAIClient::listBatches() {
     std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
-    std::string response = http_client_->get(config_.base_url + "/batches", headers);
+    auto response_result = http_client_->get(config_.base_url + "/batches", headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        BatchListResponse result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-FineTuningJob OpenAIClient::createFineTuningJob(const FineTuningRequest& request) {
+Result<FineTuningJob> OpenAIClient::createFineTuningJob(const FineTuningRequest& request) {
     nlohmann::json json_body = request;
     std::map<std::string, std::string> headers = {
         {"Content-Type", "application/json"},
         {"Authorization", "Bearer " + api_key_}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/fine_tuning/jobs", json_body.dump(), headers);
+    auto response_result = http_client_->post(
+        config_.base_url + "/fine_tuning/jobs", json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        FineTuningJob result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-FineTuningListResponse OpenAIClient::listFineTuningJobs() {
+Result<FineTuningListResponse> OpenAIClient::listFineTuningJobs() {
     std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
-    std::string response = http_client_->get(config_.base_url + "/fine_tuning/jobs", headers);
+    auto response_result =
+        http_client_->get(config_.base_url + "/fine_tuning/jobs", headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        FineTuningListResponse result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-FineTuningJob OpenAIClient::retrieveFineTuningJob(const std::string& job_id) {
+Result<FineTuningJob> OpenAIClient::retrieveFineTuningJob(const std::string& job_id) {
     std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
-    std::string response = http_client_->get(config_.base_url + "/fine_tuning/jobs/" + job_id, headers);
+    auto response_result = http_client_->get(
+        config_.base_url + "/fine_tuning/jobs/" + job_id, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        FineTuningJob result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-FineTuningJob OpenAIClient::cancelFineTuningJob(const std::string& job_id) {
+Result<FineTuningJob> OpenAIClient::cancelFineTuningJob(const std::string& job_id) {
     std::map<std::string, std::string> headers = {
         {"Content-Type", "application/json"},
         {"Authorization", "Bearer " + api_key_}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/fine_tuning/jobs/" + job_id + "/cancel", "", headers);
+    auto response_result = http_client_->post(
+        config_.base_url + "/fine_tuning/jobs/" + job_id + "/cancel", "", headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        FineTuningJob result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-Assistant OpenAIClient::createAssistant(const AssistantRequest& request) {
+Result<Assistant> OpenAIClient::createAssistant(const AssistantRequest& request) {
     nlohmann::json json_body = request;
     std::map<std::string, std::string> headers = {
         {"Content-Type", "application/json"},
@@ -497,57 +647,82 @@ Assistant OpenAIClient::createAssistant(const AssistantRequest& request) {
         {"OpenAI-Beta", "assistants=v2"}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/assistants", json_body.dump(), headers);
+    auto response_result =
+        http_client_->post(config_.base_url + "/assistants", json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        Assistant result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-Assistant OpenAIClient::retrieveAssistant(const std::string& assistant_id) {
+Result<Assistant> OpenAIClient::retrieveAssistant(const std::string& assistant_id) {
     std::map<std::string, std::string> headers = {
         {"Authorization", "Bearer " + api_key_},
         {"OpenAI-Beta", "assistants=v2"}
     };
-    std::string response = http_client_->get(config_.base_url + "/assistants/" + assistant_id, headers);
+    auto response_result = http_client_->get(
+        config_.base_url + "/assistants/" + assistant_id, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        Assistant result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-void OpenAIClient::deleteAssistant(const std::string& assistant_id) {
+Result<void> OpenAIClient::deleteAssistant(const std::string& assistant_id) {
     std::map<std::string, std::string> headers = {
         {"Authorization", "Bearer " + api_key_},
         {"OpenAI-Beta", "assistants=v2"}
     };
-    http_client_->deleteRequest(config_.base_url + "/assistants/" + assistant_id, headers);
+    auto result =
+        http_client_->deleteRequest(config_.base_url + "/assistants/" + assistant_id, headers);
+    if (!result) {
+        return std::unexpected(result.error());
+    }
+    return {};
 }
 
-Thread OpenAIClient::createThread() {
+Result<Thread> OpenAIClient::createThread() {
     std::map<std::string, std::string> headers = {
         {"Content-Type", "application/json"},
         {"Authorization", "Bearer " + api_key_},
         {"OpenAI-Beta", "assistants=v2"}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/threads", "{}", headers);
+    auto response_result =
+        http_client_->post(config_.base_url + "/threads", "{}", headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        Thread result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-ThreadMessage OpenAIClient::createMessage(const std::string& thread_id, const std::string& role, const std::string& content) {
+Result<ThreadMessage> OpenAIClient::createMessage(const std::string& thread_id,
+                                                  const std::string& role,
+                                                  const std::string& content) {
     nlohmann::json json_body = {{"role", role}, {"content", content}};
     std::map<std::string, std::string> headers = {
         {"Content-Type", "application/json"},
@@ -555,17 +730,24 @@ ThreadMessage OpenAIClient::createMessage(const std::string& thread_id, const st
         {"OpenAI-Beta", "assistants=v2"}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/threads/" + thread_id + "/messages", json_body.dump(), headers);
+    auto response_result = http_client_->post(
+        config_.base_url + "/threads/" + thread_id + "/messages", json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        ThreadMessage result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-Run OpenAIClient::createRun(const std::string& thread_id, const std::string& assistant_id) {
+Result<Run> OpenAIClient::createRun(const std::string& thread_id,
+                                    const std::string& assistant_id) {
     nlohmann::json json_body = {{"assistant_id", assistant_id}};
     std::map<std::string, std::string> headers = {
         {"Content-Type", "application/json"},
@@ -573,32 +755,46 @@ Run OpenAIClient::createRun(const std::string& thread_id, const std::string& ass
         {"OpenAI-Beta", "assistants=v2"}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/threads/" + thread_id + "/runs", json_body.dump(), headers);
+    auto response_result = http_client_->post(
+        config_.base_url + "/threads/" + thread_id + "/runs", json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        Run result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-Run OpenAIClient::retrieveRun(const std::string& thread_id, const std::string& run_id) {
+Result<Run> OpenAIClient::retrieveRun(const std::string& thread_id,
+                                      const std::string& run_id) {
     std::map<std::string, std::string> headers = {
         {"Authorization", "Bearer " + api_key_},
         {"OpenAI-Beta", "assistants=v2"}
     };
-    std::string response = http_client_->get(config_.base_url + "/threads/" + thread_id + "/runs/" + run_id, headers);
+    auto response_result = http_client_->get(
+        config_.base_url + "/threads/" + thread_id + "/runs/" + run_id, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        Run result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-AudioTranscriptionResponse OpenAIClient::createTranscription(const AudioTranscriptionRequest& request) {
+Result<AudioTranscriptionResponse> OpenAIClient::createTranscription(
+    const AudioTranscriptionRequest& request) {
     std::map<std::string, std::string> fields = {{"model", request.model}};
     if (request.language) fields["language"] = *request.language;
     if (request.prompt) fields["prompt"] = *request.prompt;
@@ -608,26 +804,34 @@ AudioTranscriptionResponse OpenAIClient::createTranscription(const AudioTranscri
     std::map<std::string, std::string> files = {{"file", request.file_path}};
     std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
 
-    std::string response = http_client_->postMultipart(config_.base_url + "/audio/transcriptions", fields, files, headers);
+    auto response_result = http_client_->postMultipart(
+        config_.base_url + "/audio/transcriptions", fields, files, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
         AudioTranscriptionResponse result;
         result.text = json_response["text"].get<std::string>();
         return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-AudioTranscriptionResponse OpenAIClient::createTranscription(const std::string& file_path, const std::string& model) {
+Result<AudioTranscriptionResponse> OpenAIClient::createTranscription(
+    const std::string& file_path,
+    const std::string& model) {
     AudioTranscriptionRequest request;
     request.file_path = file_path;
     request.model = model;
     return createTranscription(request);
 }
 
-AudioTranslationResponse OpenAIClient::createTranslation(const AudioTranslationRequest& request) {
+Result<AudioTranslationResponse> OpenAIClient::createTranslation(
+    const AudioTranslationRequest& request) {
     std::map<std::string, std::string> fields = {{"model", request.model}};
     if (request.prompt) fields["prompt"] = *request.prompt;
     if (request.response_format) fields["response_format"] = *request.response_format;
@@ -636,26 +840,34 @@ AudioTranslationResponse OpenAIClient::createTranslation(const AudioTranslationR
     std::map<std::string, std::string> files = {{"file", request.file_path}};
     std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
 
-    std::string response = http_client_->postMultipart(config_.base_url + "/audio/translations", fields, files, headers);
+    auto response_result = http_client_->postMultipart(
+        config_.base_url + "/audio/translations", fields, files, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
         AudioTranslationResponse result;
         result.text = json_response["text"].get<std::string>();
         return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-AudioTranslationResponse OpenAIClient::createTranslation(const std::string& file_path, const std::string& model) {
+Result<AudioTranslationResponse> OpenAIClient::createTranslation(
+    const std::string& file_path,
+    const std::string& model) {
     AudioTranslationRequest request;
     request.file_path = file_path;
     request.model = model;
     return createTranslation(request);
 }
 
-std::vector<uint8_t> OpenAIClient::createSpeech(const AudioSpeechRequest& request) {
+Result<std::vector<uint8_t>> OpenAIClient::createSpeech(
+    const AudioSpeechRequest& request) {
     nlohmann::json json_body;
     json_body["model"] = request.model;
     json_body["input"] = request.input;
@@ -668,10 +880,13 @@ std::vector<uint8_t> OpenAIClient::createSpeech(const AudioSpeechRequest& reques
         {"Authorization", "Bearer " + api_key_}
     };
 
-    return http_client_->postBinary(config_.base_url + "/audio/speech", json_body.dump(), headers);
+    return http_client_->postBinary(config_.base_url + "/audio/speech",
+                                    json_body.dump(),
+                                    headers);
 }
 
-std::vector<uint8_t> OpenAIClient::createSpeech(const std::string& text, const std::string& voice) {
+Result<std::vector<uint8_t>> OpenAIClient::createSpeech(const std::string& text,
+                                                        const std::string& voice) {
     AudioSpeechRequest request;
     request.model = "tts-1";
     request.input = text;
@@ -679,44 +894,61 @@ std::vector<uint8_t> OpenAIClient::createSpeech(const std::string& text, const s
     return createSpeech(request);
 }
 
-VideoObject OpenAIClient::createVideo(const VideoGenerationRequest& request) {
+Result<VideoObject> OpenAIClient::createVideo(const VideoGenerationRequest& request) {
     nlohmann::json json_body = request;
     std::map<std::string, std::string> headers = {
         {"Content-Type", "application/json"},
         {"Authorization", "Bearer " + api_key_}
     };
 
-    std::string response = http_client_->post(config_.base_url + "/videos/generations", json_body.dump(), headers);
+    auto response_result = http_client_->post(
+        config_.base_url + "/videos/generations", json_body.dump(), headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        VideoObject result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-VideoObject OpenAIClient::getVideoStatus(const std::string& video_id) {
+Result<VideoObject> OpenAIClient::getVideoStatus(const std::string& video_id) {
     std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
-    std::string response = http_client_->get(config_.base_url + "/videos/" + video_id, headers);
+    auto response_result =
+        http_client_->get(config_.base_url + "/videos/" + video_id, headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        VideoObject result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 
-VideoListResponse OpenAIClient::listVideos() {
+Result<VideoListResponse> OpenAIClient::listVideos() {
     std::map<std::string, std::string> headers = {{"Authorization", "Bearer " + api_key_}};
-    std::string response = http_client_->get(config_.base_url + "/videos", headers);
+    auto response_result = http_client_->get(config_.base_url + "/videos", headers);
+    if (!response_result) {
+        return std::unexpected(response_result.error());
+    }
 
     try {
-        nlohmann::json json_response = nlohmann::json::parse(response);
-        return json_response;
+        nlohmann::json json_response = nlohmann::json::parse(response_result.value());
+        VideoListResponse result = json_response;
+        return result;
     } catch (const std::exception& e) {
-        throw ParseException(std::string("Failed to parse response: ") + e.what());
+        return std::unexpected(
+            makeParseError(std::string("Failed to parse response: ") + e.what()));
     }
 }
 

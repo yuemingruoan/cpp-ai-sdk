@@ -26,28 +26,31 @@ public:
     AnthropicClient(const std::string& api_key, const ClientConfig& config);
     ~AnthropicClient();
 
-    std::string chat(const std::string& message);
-    std::string chat(const std::string& model, const std::string& message);
-    std::string chat(const std::string& model, const std::string& message, const std::string& system_prompt);
-    std::string chat(const std::string& model, const std::vector<Message>& messages);
+    Result<std::string> chat(const std::string& message);
+    Result<std::string> chat(const std::string& model, const std::string& message);
+    Result<std::string> chat(const std::string& model,
+                             const std::string& message,
+                             const std::string& system_prompt);
+    Result<std::string> chat(const std::string& model, const std::vector<Message>& messages);
 
-    std::future<std::string> chatAsync(const std::string& message);
-    std::future<std::string> chatAsync(const std::string& model, const std::string& message);
+    std::future<Result<std::string>> chatAsync(const std::string& message);
+    std::future<Result<std::string>> chatAsync(const std::string& model, const std::string& message);
 
-    void chatStream(const std::string& message, StreamCallback callback);
-    void chatStream(const std::string& model, const std::string& message, StreamCallback callback);
+    Result<void> chatStream(const std::string& message, StreamCallback callback);
+    Result<void> chatStream(const std::string& model, const std::string& message, StreamCallback callback);
 
     void clearContext();
     std::vector<Message> getContext() const;
 
     // Message Batches API
-    std::string createMessageBatch(const std::string& requests_file_path);
-    std::string retrieveMessageBatch(const std::string& batch_id);
-    std::string cancelMessageBatch(const std::string& batch_id);
+    Result<std::string> createMessageBatch(const std::string& requests_file_path);
+    Result<std::string> retrieveMessageBatch(const std::string& batch_id);
+    Result<std::string> cancelMessageBatch(const std::string& batch_id);
 
 private:
-    std::string callAPI(const std::string& model, const std::vector<Message>& messages,
-                        const std::string& system_prompt = "");
+    Result<std::string> callAPI(const std::string& model,
+                                const std::vector<Message>& messages,
+                                const std::string& system_prompt = "");
 
     std::unique_ptr<HttpClient> http_client_;
     std::unique_ptr<ContextManager> context_;

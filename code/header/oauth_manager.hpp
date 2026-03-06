@@ -14,8 +14,8 @@ public:
     explicit OAuthManager(const OAuthConfig& config);
     ~OAuthManager();
 
-    std::string getAccessToken();
-    void refreshToken();
+    Result<std::string> getAccessToken();
+    Result<void> refreshToken();
 
 private:
     OAuthConfig config_;

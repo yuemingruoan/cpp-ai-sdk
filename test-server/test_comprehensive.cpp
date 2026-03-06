@@ -10,60 +10,56 @@ void testOpenAI() {
     ai_sdk::OpenAIClient client("test-key", config);
 
     // Test 1: Chat
-    try {
-        std::cout << "1. Chat: ";
-        auto resp = client.chat("Hello");
+    std::cout << "1. Chat: ";
+    if (auto resp = client.chat("Hello")) {
         std::cout << "✓" << std::endl;
-    } catch (const std::exception& e) {
-        std::cout << "✗ " << e.what() << std::endl;
+    } else {
+        std::cout << "✗ " << resp.error().message << std::endl;
     }
 
     // Test 2: Embeddings
-    try {
-        std::cout << "2. Embeddings: ";
+    std::cout << "2. Embeddings: ";
+    {
         ai_sdk::EmbeddingRequest req;
         req.model = "text-embedding-3-small";
         req.input = {"test"};
-        auto resp = client.createEmbedding(req);
-        std::cout << "✓ (size: " << resp.data[0].embedding.size() << ")" << std::endl;
-    } catch (const std::exception& e) {
-        std::cout << "✗ " << e.what() << std::endl;
+        if (auto resp = client.createEmbedding(req)) {
+            std::cout << "✓ (size: " << resp->data[0].embedding.size() << ")" << std::endl;
+        } else {
+            std::cout << "✗ " << resp.error().message << std::endl;
+        }
     }
 
     // Test 3: List Models
-    try {
-        std::cout << "3. List Models: ";
-        auto resp = client.listModels();
-        std::cout << "✓ (count: " << resp.data.size() << ")" << std::endl;
-    } catch (const std::exception& e) {
-        std::cout << "✗ " << e.what() << std::endl;
+    std::cout << "3. List Models: ";
+    if (auto resp = client.listModels()) {
+        std::cout << "✓ (count: " << resp->data.size() << ")" << std::endl;
+    } else {
+        std::cout << "✗ " << resp.error().message << std::endl;
     }
 
     // Test 4: Retrieve Model
-    try {
-        std::cout << "4. Retrieve Model: ";
-        auto resp = client.retrieveModel("gpt-4");
-        std::cout << "✓ (id: " << resp.id << ")" << std::endl;
-    } catch (const std::exception& e) {
-        std::cout << "✗ " << e.what() << std::endl;
+    std::cout << "4. Retrieve Model: ";
+    if (auto resp = client.retrieveModel("gpt-4")) {
+        std::cout << "✓ (id: " << resp->id << ")" << std::endl;
+    } else {
+        std::cout << "✗ " << resp.error().message << std::endl;
     }
 
     // Test 5: Moderation
-    try {
-        std::cout << "5. Moderation: ";
-        auto resp = client.createModeration("test text");
-        std::cout << "✓ (flagged: " << resp.results[0].flagged << ")" << std::endl;
-    } catch (const std::exception& e) {
-        std::cout << "✗ " << e.what() << std::endl;
+    std::cout << "5. Moderation: ";
+    if (auto resp = client.createModeration("test text")) {
+        std::cout << "✓ (flagged: " << resp->results[0].flagged << ")" << std::endl;
+    } else {
+        std::cout << "✗ " << resp.error().message << std::endl;
     }
 
     // Test 6: Image Generation
-    try {
-        std::cout << "6. Image Generation: ";
-        auto resp = client.createImage("A cat");
+    std::cout << "6. Image Generation: ";
+    if (auto resp = client.createImage("A cat")) {
         std::cout << "✓" << std::endl;
-    } catch (const std::exception& e) {
-        std::cout << "✗ " << e.what() << std::endl;
+    } else {
+        std::cout << "✗ " << resp.error().message << std::endl;
     }
 }
 
